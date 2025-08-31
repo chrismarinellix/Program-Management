@@ -27,22 +27,37 @@ A comprehensive program management application for tracking projects, budgets, r
 ### Prerequisites
 - Node.js v18+
 - Rust (install from [rustup.rs](https://rustup.rs/))
-- Platform-specific requirements (see CROSS_PLATFORM_SETUP.md)
+- **Windows:** Visual Studio Build Tools (see WINDOWS_SETUP.md)
+- **macOS:** Xcode Command Line Tools
+- **Linux:** GTK development packages (see CROSS_PLATFORM_SETUP.md)
 
 ### Quick Start
-```bash
+
+#### Windows
+```powershell
 # Clone the repository
-git clone https://github.com/yourusername/Program-Management.git
-cd "Program Management"
+git clone https://github.com/chrismarinellix/Program-Management.git
+cd Program-Management
 
 # Install dependencies
 npm install
 
-# Place Excel files in data/ folder
-# - P.xlsx (Projects master)
-# - PT.xlsx (Transactions)
-# - AE.xlsx (Estimates)
-# - Program_Management.xlsm
+# Run development version
+npm run tauri dev
+
+# Or build installer (creates .msi file)
+.\build-windows.ps1
+# Or use: build-windows.bat
+```
+
+#### macOS/Linux
+```bash
+# Clone the repository
+git clone https://github.com/chrismarinellix/Program-Management.git
+cd "Program Management"
+
+# Install dependencies
+npm install
 
 # Run development server
 npm run tauri dev
@@ -50,6 +65,13 @@ npm run tauri dev
 # Build for production
 npm run tauri build
 ```
+
+### Data Setup
+Place Excel files in the `data/` folder:
+- P.xlsx (Projects master)
+- PT.xlsx (Transactions)
+- AE.xlsx (Estimates)
+- Program_Management.xlsm
 
 ## Data Structure
 
