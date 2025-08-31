@@ -1,4 +1,6 @@
 import React, { useState, useEffect } from 'react';
+import DataInspector from './DataInspector';
+import PivotTables from './PivotTables';
 
 interface User {
   id: string;
@@ -18,6 +20,7 @@ interface User {
 
 interface SettingsProps {
   currentUser?: User;
+  data?: any;
 }
 
 interface DataFilePaths {
@@ -27,17 +30,18 @@ interface DataFilePaths {
   programFile: string;
 }
 
-const Settings: React.FC<SettingsProps> = ({ currentUser }) => {
+const Settings: React.FC<SettingsProps> = ({ currentUser, data }) => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [password, setPassword] = useState('');
   const [users, setUsers] = useState<User[]>([]);
   const [showTooltips, setShowTooltips] = useState(true);
   const [hiddenTabs, setHiddenTabs] = useState<string[]>([]);
+  const [activeSettingsTab, setActiveSettingsTab] = useState<'general' | 'inspector' | 'pivot'>('general');
   const [dataFilePaths, setDataFilePaths] = useState<DataFilePaths>({
-    pFile: '/Users/chris/Downloads/P.xlsx',
-    ptFile: '/Users/chris/Downloads/PT.xlsx',
-    aeFile: '/Users/chris/Downloads/AE.xlsx',
-    programFile: '/Users/chris/Downloads/Program_Management.xlsm'
+    pFile: './data/P.xlsx',
+    ptFile: './data/PT.xlsx',
+    aeFile: './data/AE.xlsx',
+    programFile: './data/Program_Management.xlsm'
   });
   const [newUser, setNewUser] = useState<Partial<User>>({
     permissions: {
@@ -53,6 +57,13 @@ const Settings: React.FC<SettingsProps> = ({ currentUser }) => {
   
   // Load settings from localStorage
   useEffect(() => {
+    // Check if already authenticated today
+    const lastAuthDate = localStorage.getItem('lastAuthDate');
+    const today = new Date().toDateString();
+    if (lastAuthDate === today) {
+      setIsAuthenticated(true);
+    }
+    
     const savedSettings = localStorage.getItem('appSettings');
     if (savedSettings) {
       const settings = JSON.parse(savedSettings);
@@ -60,10 +71,10 @@ const Settings: React.FC<SettingsProps> = ({ currentUser }) => {
       setShowTooltips(settings.showTooltips ?? true);
       setHiddenTabs(settings.hiddenTabs || []);
       setDataFilePaths(settings.dataFilePaths || {
-        pFile: '/Users/chris/Downloads/P.xlsx',
-        ptFile: '/Users/chris/Downloads/PT.xlsx',
-        aeFile: '/Users/chris/Downloads/AE.xlsx',
-        programFile: '/Users/chris/Downloads/Program_Management.xlsm'
+        pFile: './data/P.xlsx',
+        ptFile: './data/PT.xlsx',
+        aeFile: './data/AE.xlsx',
+        programFile: './data/Program_Management.xlsm'
       });
     } else {
       // Initialize with default admin
@@ -109,6 +120,9 @@ const Settings: React.FC<SettingsProps> = ({ currentUser }) => {
     if (password === correctPassword) {
       setIsAuthenticated(true);
       setPassword('');
+      // Save authentication for today
+      const today = new Date().toDateString();
+      localStorage.setItem('lastAuthDate', today);
     } else {
       alert('Incorrect password. Default is: admin123');
     }
@@ -275,6 +289,117 @@ const Settings: React.FC<SettingsProps> = ({ currentUser }) => {
       </div>
 
       <div style={{ maxWidth: '1400px', margin: '0 auto', padding: '24px' }}>
+        {/* Tab Navigation */}
+        <div style={{
+          display: 'flex',
+          gap: '10px',
+          marginBottom: '24px',
+          borderBottom: '2px solid #e5e7eb',
+          backgroundColor: 'white',
+          borderRadius: '8px 8px 0 0',
+          padding: '10px 10px 0 10px',
+          justifyContent: 'space-between',
+          alignItems: 'center'
+        }}>
+          <div style={{ display: 'flex', gap: '10px' }}>
+            <button
+              onClick={() => setActiveSettingsTab('general')}
+              style={{
+                padding: '12px 24px',
+                backgroundColor: activeSettingsTab === 'general' ? '#3b82f6' : 'transparent',
+                color: activeSettingsTab === 'general' ? 'white' : '#6b7280',
+                border: 'none',
+                borderRadius: '8px 8px 0 0',
+                fontWeight: '600',
+                fontSize: '15px',
+                cursor: 'pointer',
+                transition: 'all 0.2s'
+              }}
+            >
+              ⚙️ General Settings
+            </button>
+            <button
+              onClick={() => setActiveSettingsTab('inspector')}
+              style={{
+                padding: '12px 24px',
+                backgroundColor: activeSettingsTab === 'inspector' ? '#3b82f6' : 'transparent',
+                color: activeSettingsTab === 'inspector' ? 'white' : '#6b7280',
+                border: 'none',
+                borderRadius: '8px 8px 0 0',
+                fontWeight: '600',
+                fontSize: '15px',
+                cursor: 'pointer',
+                transition: 'all 0.2s'
+              }}
+            >
+              🔍 Data Inspector
+            </button>
+            <button
+              onClick={() => setActiveSettingsTab('pivot')}
+              style={{
+                padding: '12px 24px',
+                backgroundColor: activeSettingsTab === 'pivot' ? '#3b82f6' : 'transparent',
+                color: activeSettingsTab === 'pivot' ? 'white' : '#6b7280',
+                border: 'none',
+                borderRadius: '8px 8px 0 0',
+                fontWeight: '600',
+                fontSize: '15px',
+                cursor: 'pointer',
+                transition: 'all 0.2s'
+              }}
+            >
+              📊 Pivot Tables
+            </button>
+          </div>
+          
+          <div style={{ display: 'flex', gap: '10px' }}>
+            <button
+              onClick={() => {
+                // Force reload by dispatching a custom event
+                window.dispatchEvent(new CustomEvent('forceReloadData'));
+                alert('Data reload initiated. Please wait for the loading screen to complete.');
+              }}
+              style={{
+                padding: '10px 20px',
+                background: 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)',
+                color: 'white',
+                border: 'none',
+                borderRadius: '8px',
+                fontWeight: '600',
+                fontSize: '14px',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px'
+              }}
+            >
+              🔄 Force Reload All Data
+            </button>
+            <button
+              onClick={() => {
+                setIsAuthenticated(false);
+                localStorage.removeItem('lastAuthDate');
+                alert('Logged out successfully');
+              }}
+              style={{
+                padding: '10px 20px',
+                background: 'linear-gradient(135deg, #6b7280 0%, #4b5563 100%)',
+                color: 'white',
+                border: 'none',
+                borderRadius: '8px',
+                fontWeight: '600',
+                fontSize: '14px',
+                cursor: 'pointer'
+              }}
+            >
+              🔒 Logout
+            </button>
+          </div>
+        </div>
+
+        {/* Tab Content */}
+        {activeSettingsTab === 'general' ? (
+          <>
         {/* General Settings */}
         <div style={{
           background: 'white',
@@ -489,10 +614,10 @@ const Settings: React.FC<SettingsProps> = ({ currentUser }) => {
             <button
               onClick={() => {
                 setDataFilePaths({
-                  pFile: '/Users/chris/Downloads/P.xlsx',
-                  ptFile: '/Users/chris/Downloads/PT.xlsx',
-                  aeFile: '/Users/chris/Downloads/AE.xlsx',
-                  programFile: '/Users/chris/Downloads/Program_Management.xlsm'
+                  pFile: './data/P.xlsx',
+                  ptFile: './data/PT.xlsx',
+                  aeFile: './data/AE.xlsx',
+                  programFile: './data/Program_Management.xlsm'
                 });
               }}
               style={{
@@ -669,6 +794,12 @@ const Settings: React.FC<SettingsProps> = ({ currentUser }) => {
             </table>
           </div>
         </div>
+          </>
+        ) : activeSettingsTab === 'inspector' ? (
+          <DataInspector data={data} />
+        ) : (
+          <PivotTables data={data} />
+        )}
       </div>
     </div>
   );

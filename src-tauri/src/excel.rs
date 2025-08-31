@@ -63,9 +63,9 @@ pub fn read_excel_file(file_path: &str) -> Result<Vec<ExcelData>> {
             let header_row_index = if sheet_name.to_lowercase().contains("pipeline") { 
                 10  // Pipeline headers in row 11
             } else if sheet_name.to_lowercase().contains("program") && !sheet_name.to_lowercase().contains("vacation") { 
-                2   // Program Management headers in row 3
+                2   // Program Management headers in row 3 (index 2)
             } else { 
-                0   // Default headers in row 1
+                0   // Default headers in row 1 (index 0)
             };
 
             for (row_idx, row) in range.rows().enumerate() {

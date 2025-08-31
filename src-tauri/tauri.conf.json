@@ -1,8 +1,8 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "grid-connection-program-management",
+  "productName": "Program Management",
   "version": "0.1.0",
-  "identifier": "com.chris.stock-visualizer",
+  "identifier": "com.chris.program-management",
   "build": {
     "beforeDevCommand": "npm run dev",
     "devUrl": "http://localhost:1420",
@@ -12,7 +12,7 @@
   "app": {
     "windows": [
       {
-        "title": "Grid Connection Program Management Tool",
+        "title": "Program Management",
         "width": 1200,
         "height": 800,
         "devtools": true,

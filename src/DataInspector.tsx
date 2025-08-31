@@ -87,7 +87,7 @@ const DataInspector: React.FC<DataInspectorProps> = ({ data }) => {
           ];
         } else if (sheetKey === 'pt') {
           report.columnAnalysis = [
-            { column: 'F (index 5)', purpose: 'Activity Seq', sample: sheetData.rows[1]?.[5] },
+            { column: 'E (index 4)', purpose: 'Activity Seq', sample: sheetData.rows[1]?.[4] },
             { column: 'S (index 18)', purpose: 'Internal Quantity (Hours)', sample: sheetData.rows[1]?.[18] },
             { column: 'Y (index 24)', purpose: 'Internal Amount (Cost)', sample: sheetData.rows[1]?.[24] },
             { column: 'AI (index 34)', purpose: 'Sales Amount (Revenue)', sample: sheetData.rows[1]?.[34] }
@@ -109,6 +109,119 @@ const DataInspector: React.FC<DataInspectorProps> = ({ data }) => {
       fontFamily: 'monospace'
     }}>
       <h1 style={{ marginBottom: '20px', color: '#1f2937' }}>📋 Data Inspector - Sheet Analysis Report</h1>
+      
+      {/* Data Source Matrix */}
+      <div style={{
+        backgroundColor: '#e8f5e9',
+        padding: '20px',
+        borderRadius: '8px',
+        marginBottom: '30px',
+        boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
+      }}>
+        <h2 style={{ color: '#2e7d32', marginBottom: '15px' }}>🔄 Data Source Matrix - Where Data Comes From</h2>
+        <table style={{
+          width: '100%',
+          borderCollapse: 'collapse',
+          backgroundColor: 'white',
+          borderRadius: '4px',
+          overflow: 'hidden'
+        }}>
+          <thead>
+            <tr style={{ backgroundColor: '#4caf50', color: 'white' }}>
+              <th style={{ padding: '12px', textAlign: 'left', borderRight: '1px solid #ddd' }}>Tab/Module</th>
+              <th style={{ padding: '12px', textAlign: 'left', borderRight: '1px solid #ddd' }}>Primary Data Source</th>
+              <th style={{ padding: '12px', textAlign: 'left', borderRight: '1px solid #ddd' }}>Secondary Data Source</th>
+              <th style={{ padding: '12px', textAlign: 'left', borderRight: '1px solid #ddd' }}>Key Columns Used</th>
+              <th style={{ padding: '12px', textAlign: 'left' }}>What It Shows & Why</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr style={{ borderBottom: '1px solid #ddd' }}>
+              <td style={{ padding: '10px', fontWeight: 'bold', borderRight: '1px solid #ddd' }}>📊 Projects Dashboard</td>
+              <td style={{ padding: '10px', borderRight: '1px solid #ddd' }}>P.xlsx (Projects Master)</td>
+              <td style={{ padding: '10px', borderRight: '1px solid #ddd' }}>PT.xlsx (Transactions)</td>
+              <td style={{ padding: '10px', fontSize: '12px', borderRight: '1px solid #ddd' }}>
+                P: Col A (Project ID), Col B (Name), Col J (Status)<br/>
+                PT: Col E (Activity Seq), Col Y (Cost), Col AI (Revenue)
+              </td>
+              <td style={{ padding: '10px', fontSize: '12px', backgroundColor: '#f0f8ff' }}>
+                <strong>Shows:</strong> All active projects with financial summaries<br/>
+                <strong>Why:</strong> Provides high-level overview of project portfolio, tracks spending vs budget, identifies projects needing attention
+              </td>
+            </tr>
+            <tr style={{ borderBottom: '1px solid #ddd', backgroundColor: '#f5f5f5' }}>
+              <td style={{ padding: '10px', fontWeight: 'bold', borderRight: '1px solid #ddd' }}>💰 Budget Tracker</td>
+              <td style={{ padding: '10px', borderRight: '1px solid #ddd' }}>AE.xlsx (Budget/Estimates)</td>
+              <td style={{ padding: '10px', borderRight: '1px solid #ddd' }}>PT.xlsx (Actuals)</td>
+              <td style={{ padding: '10px', fontSize: '12px', borderRight: '1px solid #ddd' }}>
+                AE: Col S (Activity Seq), Col K (Est Cost), Col L (Est Revenue)<br/>
+                PT: Col E (Activity Seq), Col Y (Actual Cost), Col AI (Actual Revenue)
+              </td>
+              <td style={{ padding: '10px', fontSize: '12px', backgroundColor: '#fff5ee' }}>
+                <strong>Shows:</strong> Budget vs Actual comparison by activity<br/>
+                <strong>Why:</strong> Monitors budget consumption, identifies overruns, tracks T&E fees, enables proactive cost management
+              </td>
+            </tr>
+            <tr style={{ borderBottom: '1px solid #ddd' }}>
+              <td style={{ padding: '10px', fontWeight: 'bold', borderRight: '1px solid #ddd' }}>🔄 Pipeline Manager</td>
+              <td style={{ padding: '10px', borderRight: '1px solid #ddd' }}>Program_Management.xlsm</td>
+              <td style={{ padding: '10px', borderRight: '1px solid #ddd' }}>P.xlsx (Projects)</td>
+              <td style={{ padding: '10px', fontSize: '12px', borderRight: '1px solid #ddd' }}>
+                Row 11: Headers<br/>
+                Columns: Project stages, dates, status
+              </td>
+              <td style={{ padding: '10px', fontSize: '12px', backgroundColor: '#f0fff4' }}>
+                <strong>Shows:</strong> Project pipeline stages from opportunity to completion<br/>
+                <strong>Why:</strong> Tracks project progression through lifecycle, forecasts resource needs, identifies bottlenecks in workflow
+              </td>
+            </tr>
+            <tr style={{ borderBottom: '1px solid #ddd', backgroundColor: '#f5f5f5' }}>
+              <td style={{ padding: '10px', fontWeight: 'bold', borderRight: '1px solid #ddd' }}>🏖️ Vacation Planner</td>
+              <td style={{ padding: '10px', borderRight: '1px solid #ddd' }}>Program_Management.xlsm</td>
+              <td style={{ padding: '10px', borderRight: '1px solid #ddd' }}>-</td>
+              <td style={{ padding: '10px', fontSize: '12px', borderRight: '1px solid #ddd' }}>
+                Row 1: Dates<br/>
+                Col A: Employee names<br/>
+                Data cells: Leave types
+              </td>
+              <td style={{ padding: '10px', fontSize: '12px', backgroundColor: '#fef3ff' }}>
+                <strong>Shows:</strong> Team availability calendar with leave schedules<br/>
+                <strong>Why:</strong> Prevents resource conflicts, ensures adequate coverage, helps plan project timelines around team availability
+              </td>
+            </tr>
+            <tr style={{ borderBottom: '1px solid #ddd' }}>
+              <td style={{ padding: '10px', fontWeight: 'bold', borderRight: '1px solid #ddd' }}>📈 Program Management</td>
+              <td style={{ padding: '10px', borderRight: '1px solid #ddd' }}>Program_Management.xlsm</td>
+              <td style={{ padding: '10px', borderRight: '1px solid #ddd' }}>All sheets</td>
+              <td style={{ padding: '10px', fontSize: '12px', borderRight: '1px solid #ddd' }}>
+                <strong>Headers in Row 3:</strong><br/>
+                Owner/AP | Project/Activity | Client | Key Commentary | Actions | Status/RAG | VD | Phase | Stage | etc.<br/>
+                Data starts Row 4
+              </td>
+              <td style={{ padding: '10px', fontSize: '12px', backgroundColor: '#fff9e6' }}>
+                <strong>Shows:</strong> Comprehensive program status with RAG ratings, actions, and commentary<br/>
+                <strong>Why:</strong> Provides executive-level oversight, tracks deliverables and milestones, manages risks and action items across all projects
+              </td>
+            </tr>
+          </tbody>
+        </table>
+        
+        <div style={{
+          marginTop: '15px',
+          padding: '10px',
+          backgroundColor: '#fff3cd',
+          borderRadius: '4px',
+          fontSize: '13px'
+        }}>
+          <strong>📌 Key Insights:</strong>
+          <ul style={{ marginTop: '5px', marginLeft: '20px' }}>
+            <li><strong>Activity Seq</strong> is the primary JOIN key between AE (budget) and PT (actuals)</li>
+            <li><strong>Project ID</strong> links P.xlsx to other sheets</li>
+            <li><strong>Row 1</strong> contains headers for most sheets (except Pipeline which uses Row 11)</li>
+            <li>Your budget shows <strong>Infinity%</strong> because Budget Revenue is $0 in AE.xlsx</li>
+          </ul>
+        </div>
+      </div>
       
       {sheetReports.map((report, idx) => (
         <div key={idx} style={{
@@ -243,7 +356,7 @@ const DataInspector: React.FC<DataInspectorProps> = ({ data }) => {
           <li>Column letters correspond to Excel columns (A, B, C, etc.)</li>
           <li>Index numbers are 0-based array positions</li>
           <li>For AE sheet: Activity Seq should be in column S (index 18)</li>
-          <li>For PT sheet: Activity Seq should be in column F (index 5)</li>
+          <li>For PT sheet: Activity Seq should be in column E (index 4)</li>
         </ul>
       </div>
     </div>

@@ -7,13 +7,23 @@ import EnhancedVacationPlanner from './EnhancedVacationPlanner';
 import BudgetTracker from './BudgetTracker';
 import Settings from './Settings';
 import DataInspector from './DataInspector';
+import ProjectMap from './ProjectMap';
+import BudgetAlerts from './BudgetAlerts';
+import HoursTracking from './HoursTracking';
+import RevenueAnalysis from './RevenueAnalysis';
 
 // Global data store to avoid reloading
 let globalDataCache: any = null;
 let dataLoadPromise: Promise<any> | null = null;
 
+// Make these accessible for force reload
+(window as any).clearDataCache = () => {
+  globalDataCache = null;
+  dataLoadPromise = null;
+};
+
 function GridConnectionDashboard() {
-  const [activeView, setActiveView] = useState<'projects' | 'pipeline' | 'vacation' | 'program' | 'budget' | 'settings' | 'inspector'>('inspector');
+  const [activeView, setActiveView] = useState<'projects' | 'pipeline' | 'vacation' | 'program' | 'budget' | 'settings' | 'map' | 'alerts' | 'hours' | 'revenue' | 'kanban'>('map');
   const [hiddenTabs, setHiddenTabs] = useState<string[]>([]);
   const [dataReady, setDataReady] = useState(false);
   const [loadingProgress, setLoadingProgress] = useState({
@@ -48,10 +58,27 @@ function GridConnectionDashboard() {
       }
     };
     
+    // Listen for force reload event
+    const handleForceReload = () => {
+      // Clear cache using the window function
+      if ((window as any).clearDataCache) {
+        (window as any).clearDataCache();
+      }
+      setDataReady(false);
+      setLoadingProgress({ 'P.xlsx': 0, 'PT.xlsx': 0, 'AE.xlsx': 0, 'Program_Management.xlsm': 0 });
+      setDebugLog([]);
+      setLoadStartTime(0); // Reset load start time
+      setTimeout(() => {
+        loadAllDataOnce();
+      }, 100); // Small delay to ensure state is cleared
+    };
+    
     window.addEventListener('settingsUpdated', handleSettingsUpdate as EventListener);
+    window.addEventListener('forceReloadData', handleForceReload as EventListener);
     
     return () => {
       window.removeEventListener('settingsUpdated', handleSettingsUpdate as EventListener);
+      window.removeEventListener('forceReloadData', handleForceReload as EventListener);
     };
   }, []);
 
@@ -121,14 +148,17 @@ function GridConnectionDashboard() {
   };
 
   const loadAllDataOnce = async () => {
-    // If data is already cached, use it
-    if (globalDataCache) {
+    // Check if force reload is needed (cache cleared)
+    const forceReload = !globalDataCache && !dataLoadPromise;
+    
+    // If data is already cached and not force reloading, use it
+    if (globalDataCache && !forceReload) {
       setDataReady(true);
       return;
     }
 
-    // If a load is already in progress, wait for it
-    if (dataLoadPromise) {
+    // If a load is already in progress and not force reloading, wait for it
+    if (dataLoadPromise && !forceReload) {
       await dataLoadPromise;
       setDataReady(true);
       return;
@@ -172,11 +202,19 @@ function GridConnectionDashboard() {
     
     // Get file paths from settings
     const savedSettings = localStorage.getItem('appSettings');
+    
+    // Detect platform and set default paths
+    const isWindows = navigator.platform.toLowerCase().includes('win');
+    const defaultDownloadsPath = isWindows 
+      ? 'C:\\Users\\' + (window as any).username + '\\Downloads\\'
+      : '/Users/' + (window as any).username + '/Downloads/';
+    
+    // Use relative paths or platform-specific defaults
     let filePaths = {
-      pFile: '/Users/chris/Downloads/P.xlsx',
-      ptFile: '/Users/chris/Downloads/PT.xlsx',
-      aeFile: '/Users/chris/Downloads/AE.xlsx',
-      programFile: '/Users/chris/Downloads/Program_Management.xlsm'
+      pFile: './data/P.xlsx',  // Relative to app directory
+      ptFile: './data/PT.xlsx',
+      aeFile: './data/AE.xlsx',
+      programFile: './data/Program_Management.xlsm'
     };
     
     if (savedSettings) {
@@ -358,9 +396,17 @@ function GridConnectionDashboard() {
           {/* Reload button */}
           <button
             onClick={() => {
+              // Clear everything and force a fresh reload
+              if ((window as any).clearDataCache) {
+                (window as any).clearDataCache();
+              }
               setDataReady(false);
               setLoadingProgress({ 'P.xlsx': 0, 'PT.xlsx': 0, 'AE.xlsx': 0, 'Program_Management.xlsm': 0 });
-              loadAllDataOnce();
+              setDebugLog([]);
+              setLoadStartTime(0);
+              setTimeout(() => {
+                loadAllDataOnce();
+              }, 100);
             }}
             style={{
               padding: '10px 20px',
@@ -601,137 +647,230 @@ function GridConnectionDashboard() {
       {/* Simplified Header with Navigation */}
       <div style={{ 
         backgroundColor: 'white', 
-        borderBottom: '2px solid #e5e7eb',
-        padding: '0 20px',
-        display: 'flex',
-        alignItems: 'center',
-        gap: '40px'
+        borderBottom: '2px solid #e5e7eb'
       }}>
-        <h1 style={{ 
-          margin: '16px 0', 
-          fontSize: '24px', 
-          fontWeight: 'bold',
-          color: '#1e293b'
+        {/* Title Bar */}
+        <div style={{
+          padding: '10px 20px',
+          borderBottom: '1px solid #f3f4f6',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center'
         }}>
-          Grid Connection Program
-        </h1>
+          <h1 style={{ 
+            margin: 0, 
+            fontSize: '18px', 
+            fontWeight: 'bold',
+            color: '#1e293b'
+          }}>
+            Grid Connection Program
+          </h1>
+          <button
+            onClick={() => setActiveView('settings')}
+            style={{
+              padding: '8px 16px',
+              backgroundColor: activeView === 'settings' ? '#3b82f6' : 'transparent',
+              color: activeView === 'settings' ? 'white' : '#64748b',
+              border: 'none',
+              borderRadius: '6px',
+              cursor: 'pointer',
+              fontWeight: '500',
+              fontSize: '14px'
+            }}
+          >
+            ⚙️ Settings
+          </button>
+        </div>
         
-        {!hiddenTabs.includes('projects') && (
+        {/* Tab Navigation - Organized by Category */}
+        <div style={{
+          padding: '8px 12px',
+          display: 'flex',
+          flexWrap: 'wrap',
+          gap: '2px'
+        }}>
+          {/* Core Project Tabs */}
+          {!hiddenTabs.includes('projects') && (
+            <button
+              onClick={() => setActiveView('projects')}
+              style={{
+                padding: '8px 16px',
+                backgroundColor: activeView === 'projects' ? '#3b82f6' : '#f8f9fa',
+                color: activeView === 'projects' ? 'white' : '#475569',
+                border: 'none',
+                borderRadius: '6px',
+                cursor: 'pointer',
+                fontWeight: '500',
+                fontSize: '13px',
+                transition: 'all 0.2s'
+              }}
+              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = activeView === 'projects' ? '#3b82f6' : '#e2e8f0'}
+              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = activeView === 'projects' ? '#3b82f6' : '#f8f9fa'}
+            >
+              📊 Projects
+            </button>
+          )}
+          {!hiddenTabs.includes('budget') && (
+            <button
+              onClick={() => setActiveView('budget')}
+              style={{
+                padding: '8px 16px',
+                backgroundColor: activeView === 'budget' ? '#3b82f6' : '#f8f9fa',
+                color: activeView === 'budget' ? 'white' : '#475569',
+                border: 'none',
+                borderRadius: '6px',
+                cursor: 'pointer',
+                fontWeight: '500',
+                fontSize: '13px',
+                transition: 'all 0.2s'
+              }}
+              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = activeView === 'budget' ? '#3b82f6' : '#e2e8f0'}
+              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = activeView === 'budget' ? '#3b82f6' : '#f8f9fa'}
+            >
+              💰 Budget
+            </button>
+          )}
+          {!hiddenTabs.includes('alerts') && (
+            <button
+              onClick={() => setActiveView('alerts')}
+              style={{
+                padding: '8px 16px',
+                backgroundColor: activeView === 'alerts' ? '#3b82f6' : '#f8f9fa',
+                color: activeView === 'alerts' ? 'white' : '#475569',
+                border: 'none',
+                borderRadius: '6px',
+                cursor: 'pointer',
+                fontWeight: '500',
+                fontSize: '13px',
+                transition: 'all 0.2s'
+              }}
+              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = activeView === 'alerts' ? '#3b82f6' : '#e2e8f0'}
+              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = activeView === 'alerts' ? '#3b82f6' : '#f8f9fa'}
+            >
+              ⚠️ Alerts
+            </button>
+          )}
+          {!hiddenTabs.includes('hours') && (
+            <button
+              onClick={() => setActiveView('hours')}
+              style={{
+                padding: '8px 16px',
+                backgroundColor: activeView === 'hours' ? '#3b82f6' : '#f8f9fa',
+                color: activeView === 'hours' ? 'white' : '#475569',
+                border: 'none',
+                borderRadius: '6px',
+                cursor: 'pointer',
+                fontWeight: '500',
+                fontSize: '13px',
+                transition: 'all 0.2s'
+              }}
+              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = activeView === 'hours' ? '#3b82f6' : '#e2e8f0'}
+              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = activeView === 'hours' ? '#3b82f6' : '#f8f9fa'}
+            >
+              ⏱️ Hours
+            </button>
+          )}
+          {!hiddenTabs.includes('revenue') && (
+            <button
+              onClick={() => setActiveView('revenue')}
+              style={{
+                padding: '8px 16px',
+                backgroundColor: activeView === 'revenue' ? '#3b82f6' : '#f8f9fa',
+                color: activeView === 'revenue' ? 'white' : '#475569',
+                border: 'none',
+                borderRadius: '6px',
+                cursor: 'pointer',
+                fontWeight: '500',
+                fontSize: '13px',
+                transition: 'all 0.2s'
+              }}
+              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = activeView === 'revenue' ? '#3b82f6' : '#e2e8f0'}
+              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = activeView === 'revenue' ? '#3b82f6' : '#f8f9fa'}
+            >
+              💰 Revenue
+            </button>
+          )}
+          
+          {/* Planning & Management */}
+          {!hiddenTabs.includes('pipeline') && (
+            <button
+              onClick={() => setActiveView('pipeline')}
+              style={{
+                padding: '8px 16px',
+                backgroundColor: activeView === 'pipeline' ? '#3b82f6' : '#f8f9fa',
+                color: activeView === 'pipeline' ? 'white' : '#475569',
+                border: 'none',
+                borderRadius: '6px',
+                cursor: 'pointer',
+                fontWeight: '500',
+                fontSize: '13px',
+                transition: 'all 0.2s'
+              }}
+              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = activeView === 'pipeline' ? '#3b82f6' : '#e2e8f0'}
+              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = activeView === 'pipeline' ? '#3b82f6' : '#f8f9fa'}
+            >
+              🔄 Pipeline
+            </button>
+          )}
+          {!hiddenTabs.includes('program') && (
+            <button
+              onClick={() => setActiveView('program')}
+              style={{
+                padding: '8px 16px',
+                backgroundColor: activeView === 'program' ? '#3b82f6' : '#f8f9fa',
+                color: activeView === 'program' ? 'white' : '#475569',
+                border: 'none',
+                borderRadius: '6px',
+                cursor: 'pointer',
+                fontWeight: '500',
+                fontSize: '13px',
+                transition: 'all 0.2s'
+              }}
+              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = activeView === 'program' ? '#3b82f6' : '#e2e8f0'}
+              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = activeView === 'program' ? '#3b82f6' : '#f8f9fa'}
+            >
+              📈 Program
+            </button>
+          )}
           <button
-            onClick={() => setActiveView('projects')}
+            onClick={() => setActiveView('map')}
             style={{
-              padding: '16px 20px',
-              backgroundColor: activeView === 'projects' ? '#3b82f6' : 'transparent',
-              color: activeView === 'projects' ? 'white' : '#64748b',
+              padding: '8px 16px',
+              backgroundColor: activeView === 'map' ? '#3b82f6' : '#f8f9fa',
+              color: activeView === 'map' ? 'white' : '#475569',
               border: 'none',
-              borderBottom: activeView === 'projects' ? '3px solid #2563eb' : 'none',
+              borderRadius: '6px',
               cursor: 'pointer',
               fontWeight: '500',
-              fontSize: '15px'
+              fontSize: '13px',
+              transition: 'all 0.2s'
             }}
+            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = activeView === 'map' ? '#3b82f6' : '#e2e8f0'}
+            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = activeView === 'map' ? '#3b82f6' : '#f8f9fa'}
           >
-            Projects
+            🗺️ Map
           </button>
-        )}
-        {!hiddenTabs.includes('pipeline') && (
-          <button
-            onClick={() => setActiveView('pipeline')}
-            style={{
-              padding: '16px 20px',
-              backgroundColor: activeView === 'pipeline' ? '#3b82f6' : 'transparent',
-              color: activeView === 'pipeline' ? 'white' : '#64748b',
-              border: 'none',
-              borderBottom: activeView === 'pipeline' ? '3px solid #2563eb' : 'none',
-              cursor: 'pointer',
-              fontWeight: '500',
-              fontSize: '15px'
-            }}
-          >
-            Pipeline
-          </button>
-        )}
-        {!hiddenTabs.includes('vacation') && (
-          <button
-            onClick={() => setActiveView('vacation')}
-            style={{
-              padding: '16px 20px',
-              backgroundColor: activeView === 'vacation' ? '#3b82f6' : 'transparent',
-              color: activeView === 'vacation' ? 'white' : '#64748b',
-              border: 'none',
-              borderBottom: activeView === 'vacation' ? '3px solid #2563eb' : 'none',
-              cursor: 'pointer',
-              fontWeight: '500',
-              fontSize: '15px'
-            }}
-          >
-            Vacation Planner
-          </button>
-        )}
-        {!hiddenTabs.includes('program') && (
-          <button
-            onClick={() => setActiveView('program')}
-            style={{
-              padding: '16px 20px',
-              backgroundColor: activeView === 'program' ? '#3b82f6' : 'transparent',
-              color: activeView === 'program' ? 'white' : '#64748b',
-              border: 'none',
-              borderBottom: activeView === 'program' ? '3px solid #2563eb' : 'none',
-              cursor: 'pointer',
-              fontWeight: '500',
-              fontSize: '15px'
-            }}
-          >
-            Program Management
-          </button>
-        )}
-        {!hiddenTabs.includes('budget') && (
-          <button
-            onClick={() => setActiveView('budget')}
-            style={{
-              padding: '16px 20px',
-              backgroundColor: activeView === 'budget' ? '#3b82f6' : 'transparent',
-              color: activeView === 'budget' ? 'white' : '#64748b',
-              border: 'none',
-              borderBottom: activeView === 'budget' ? '3px solid #2563eb' : 'none',
-              cursor: 'pointer',
-              fontWeight: '500',
-              fontSize: '15px'
-            }}
-          >
-            Budget Tracker
-          </button>
-        )}
-        <button
-          onClick={() => setActiveView('inspector')}
-          style={{
-            padding: '16px 20px',
-            backgroundColor: activeView === 'inspector' ? '#3b82f6' : 'transparent',
-            color: activeView === 'inspector' ? 'white' : '#64748b',
-            border: 'none',
-            borderBottom: activeView === 'inspector' ? '3px solid #2563eb' : 'none',
-            cursor: 'pointer',
-            fontWeight: '500',
-            fontSize: '15px'
-          }}
-        >
-          🔍 Data Inspector
-        </button>
-        <button
-          onClick={() => setActiveView('settings')}
-          style={{
-            padding: '16px 20px',
-            backgroundColor: activeView === 'settings' ? '#3b82f6' : 'transparent',
-            color: activeView === 'settings' ? 'white' : '#64748b',
-            border: 'none',
-            borderBottom: activeView === 'settings' ? '3px solid #2563eb' : 'none',
-            cursor: 'pointer',
-            fontWeight: '500',
-            fontSize: '15px',
-            marginLeft: 'auto'
-          }}
-        >
-          ⚙️ Settings
-        </button>
+          {!hiddenTabs.includes('vacation') && (
+            <button
+              onClick={() => setActiveView('vacation')}
+              style={{
+                padding: '8px 16px',
+                backgroundColor: activeView === 'vacation' ? '#3b82f6' : '#f8f9fa',
+                color: activeView === 'vacation' ? 'white' : '#475569',
+                border: 'none',
+                borderRadius: '6px',
+                cursor: 'pointer',
+                fontWeight: '500',
+                fontSize: '13px',
+                transition: 'all 0.2s'
+              }}
+              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = activeView === 'vacation' ? '#3b82f6' : '#e2e8f0'}
+              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = activeView === 'vacation' ? '#3b82f6' : '#f8f9fa'}
+            >
+              🏖️ Vacation
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Main Content Area */}
@@ -747,8 +886,11 @@ function GridConnectionDashboard() {
             pData={globalDataCache.p?.rows || globalDataCache.pData?.[0]?.rows || []} 
           />
         )}
-        {activeView === 'settings' && <Settings />}
-        {activeView === 'inspector' && <DataInspector data={globalDataCache} />}
+        {activeView === 'map' && <ProjectMap data={globalDataCache} />}
+        {activeView === 'alerts' && <BudgetAlerts data={globalDataCache} />}
+        {activeView === 'hours' && <HoursTracking data={globalDataCache} />}
+        {activeView === 'revenue' && <RevenueAnalysis data={globalDataCache} />}
+        {activeView === 'settings' && <Settings data={globalDataCache} />}
       </div>
     </div>
   );
