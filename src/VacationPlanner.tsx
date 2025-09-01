@@ -28,14 +28,18 @@ function VacationPlanner({ data }: VacationPlannerProps) {
   }, [data]);
 
   const loadVacationData = () => {
-    if (!data?.pmData) return;
-    
-    // Find vacation planner sheet
+    // Check if vacation data is directly available
     let vacationSheet = null;
-    for (const sheet of (data.pmData as any[])) {
-      if (sheet.sheet_name && sheet.sheet_name.toLowerCase().includes('vacation')) {
-        vacationSheet = sheet;
-        break;
+    
+    if (data?.vacation) {
+      vacationSheet = data.vacation;
+    } else if (data?.pmData) {
+      // Fallback to old structure
+      for (const sheet of (data.pmData as any[])) {
+        if (sheet.sheet_name && sheet.sheet_name.toLowerCase().includes('vacation')) {
+          vacationSheet = sheet;
+          break;
+        }
       }
     }
     

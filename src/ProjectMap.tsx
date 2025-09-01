@@ -31,7 +31,7 @@ interface ProjectMapProps {
 }
 
 // Create sonar pulse HTML for custom marker
-const createSonarMarker = (color: string = '#00ff00') => {
+const createSonarMarker = (color: string = '#3b82f6') => {
   return L.divIcon({
     className: 'sonar-marker',
     html: `
@@ -205,13 +205,13 @@ const ProjectMap: React.FC<ProjectMapProps> = ({ data }) => {
       height: '100vh', 
       display: 'flex', 
       flexDirection: 'column',
-      backgroundColor: '#0a0a0a'
+      backgroundColor: '#f8f9fa'
     }}>
       {/* Header */}
       <div style={{
         padding: '20px',
-        backgroundColor: '#1a1a1a',
-        borderBottom: '2px solid #00ff00',
+        backgroundColor: 'white',
+        borderBottom: '1px solid #e2e8f0',
         display: 'flex',
         justifyContent: 'space-between',
         alignItems: 'center'
@@ -219,18 +219,16 @@ const ProjectMap: React.FC<ProjectMapProps> = ({ data }) => {
         <div>
           <h1 style={{ 
             margin: 0, 
-            color: '#00ff00',
-            fontSize: '28px',
-            fontFamily: 'monospace',
-            textShadow: '0 0 10px #00ff00'
+            color: '#1f2937',
+            fontSize: '24px',
+            fontWeight: '600'
           }}>
             🗺️ Project Location Tracker
           </h1>
           <p style={{ 
             margin: '5px 0 0 0', 
-            color: '#00cc00',
-            fontSize: '14px',
-            fontFamily: 'monospace'
+            color: '#6b7280',
+            fontSize: '14px'
           }}>
             Active Projects: {locations.length} | Coverage: Australia
           </p>
@@ -240,24 +238,23 @@ const ProjectMap: React.FC<ProjectMapProps> = ({ data }) => {
           onClick={() => setShowAddLocation(!showAddLocation)}
           style={{
             padding: '12px 24px',
-            backgroundColor: '#00ff00',
-            color: '#000',
-            border: '2px solid #00ff00',
-            borderRadius: '25px',
-            fontSize: '16px',
-            fontWeight: 'bold',
+            backgroundColor: '#3b82f6',
+            color: 'white',
+            border: 'none',
+            borderRadius: '6px',
+            fontSize: '14px',
+            fontWeight: '500',
             cursor: 'pointer',
-            fontFamily: 'monospace',
-            boxShadow: '0 0 20px #00ff00',
+            boxShadow: '0 1px 2px rgba(0, 0, 0, 0.05)',
             transition: 'all 0.3s'
           }}
           onMouseEnter={(e) => {
-            e.currentTarget.style.backgroundColor = '#000';
-            e.currentTarget.style.color = '#00ff00';
+            e.currentTarget.style.backgroundColor = '#2563eb';
+            e.currentTarget.style.boxShadow = '0 4px 6px rgba(0, 0, 0, 0.1)';
           }}
           onMouseLeave={(e) => {
-            e.currentTarget.style.backgroundColor = '#00ff00';
-            e.currentTarget.style.color = '#000';
+            e.currentTarget.style.backgroundColor = '#3b82f6';
+            e.currentTarget.style.boxShadow = '0 1px 2px rgba(0, 0, 0, 0.05)';
           }}
         >
           📍 Add Location
@@ -268,8 +265,8 @@ const ProjectMap: React.FC<ProjectMapProps> = ({ data }) => {
       {showAddLocation && (
         <div style={{
           padding: '20px',
-          backgroundColor: '#1a1a1a',
-          borderBottom: '1px solid #00ff00'
+          backgroundColor: '#f9fafb',
+          borderBottom: '1px solid #e5e7eb'
         }}>
           <div style={{ 
             display: 'grid', 
@@ -283,12 +280,12 @@ const ProjectMap: React.FC<ProjectMapProps> = ({ data }) => {
               value={newLocation.projectName}
               onChange={(e) => setNewLocation({ ...newLocation, projectName: e.target.value })}
               style={{
-                padding: '10px',
-                backgroundColor: '#000',
-                color: '#00ff00',
-                border: '1px solid #00ff00',
-                borderRadius: '5px',
-                fontFamily: 'monospace'
+                padding: '8px 12px',
+                backgroundColor: 'white',
+                color: '#1f2937',
+                border: '1px solid #d1d5db',
+                borderRadius: '6px',
+                fontSize: '14px'
               }}
             />
             <input
@@ -297,12 +294,12 @@ const ProjectMap: React.FC<ProjectMapProps> = ({ data }) => {
               value={newLocation.address}
               onChange={(e) => setNewLocation({ ...newLocation, address: e.target.value })}
               style={{
-                padding: '10px',
-                backgroundColor: '#000',
-                color: '#00ff00',
-                border: '1px solid #00ff00',
-                borderRadius: '5px',
-                fontFamily: 'monospace'
+                padding: '8px 12px',
+                backgroundColor: 'white',
+                color: '#1f2937',
+                border: '1px solid #d1d5db',
+                borderRadius: '6px',
+                fontSize: '14px'
               }}
             />
             <input
@@ -311,12 +308,12 @@ const ProjectMap: React.FC<ProjectMapProps> = ({ data }) => {
               value={newLocation.projectId}
               onChange={(e) => setNewLocation({ ...newLocation, projectId: e.target.value })}
               style={{
-                padding: '10px',
-                backgroundColor: '#000',
-                color: '#00ff00',
-                border: '1px solid #00ff00',
-                borderRadius: '5px',
-                fontFamily: 'monospace'
+                padding: '8px 12px',
+                backgroundColor: 'white',
+                color: '#1f2937',
+                border: '1px solid #d1d5db',
+                borderRadius: '6px',
+                fontSize: '14px'
               }}
             />
             <input
@@ -325,12 +322,12 @@ const ProjectMap: React.FC<ProjectMapProps> = ({ data }) => {
               value={newLocation.client}
               onChange={(e) => setNewLocation({ ...newLocation, client: e.target.value })}
               style={{
-                padding: '10px',
-                backgroundColor: '#000',
-                color: '#00ff00',
-                border: '1px solid #00ff00',
-                borderRadius: '5px',
-                fontFamily: 'monospace'
+                padding: '8px 12px',
+                backgroundColor: 'white',
+                color: '#1f2937',
+                border: '1px solid #d1d5db',
+                borderRadius: '6px',
+                fontSize: '14px'
               }}
             />
             <input
@@ -339,24 +336,24 @@ const ProjectMap: React.FC<ProjectMapProps> = ({ data }) => {
               value={newLocation.budget}
               onChange={(e) => setNewLocation({ ...newLocation, budget: e.target.value })}
               style={{
-                padding: '10px',
-                backgroundColor: '#000',
-                color: '#00ff00',
-                border: '1px solid #00ff00',
-                borderRadius: '5px',
-                fontFamily: 'monospace'
+                padding: '8px 12px',
+                backgroundColor: 'white',
+                color: '#1f2937',
+                border: '1px solid #d1d5db',
+                borderRadius: '6px',
+                fontSize: '14px'
               }}
             />
             <select
               value={newLocation.status}
               onChange={(e) => setNewLocation({ ...newLocation, status: e.target.value })}
               style={{
-                padding: '10px',
-                backgroundColor: '#000',
-                color: '#00ff00',
-                border: '1px solid #00ff00',
-                borderRadius: '5px',
-                fontFamily: 'monospace'
+                padding: '8px 12px',
+                backgroundColor: 'white',
+                color: '#1f2937',
+                border: '1px solid #d1d5db',
+                borderRadius: '6px',
+                fontSize: '14px'
               }}
             >
               <option value="">Status</option>
@@ -374,12 +371,12 @@ const ProjectMap: React.FC<ProjectMapProps> = ({ data }) => {
               onChange={(e) => setNewLocation({ ...newLocation, description: e.target.value })}
               style={{
                 flex: 1,
-                padding: '10px',
-                backgroundColor: '#000',
-                color: '#00ff00',
-                border: '1px solid #00ff00',
-                borderRadius: '5px',
-                fontFamily: 'monospace',
+                padding: '8px 12px',
+                backgroundColor: 'white',
+                color: '#1f2937',
+                border: '1px solid #d1d5db',
+                borderRadius: '6px',
+                fontSize: '14px',
                 minHeight: '60px'
               }}
             />
@@ -387,14 +384,14 @@ const ProjectMap: React.FC<ProjectMapProps> = ({ data }) => {
               onClick={handleAddLocation}
               disabled={isGeocoding}
               style={{
-                padding: '15px 30px',
-                backgroundColor: '#00ff00',
-                color: '#000',
+                padding: '10px 20px',
+                backgroundColor: '#3b82f6',
+                color: 'white',
                 border: 'none',
-                borderRadius: '5px',
-                fontWeight: 'bold',
+                borderRadius: '6px',
+                fontWeight: '500',
                 cursor: isGeocoding ? 'wait' : 'pointer',
-                fontFamily: 'monospace'
+                fontSize: '14px'
               }}
             >
               {isGeocoding ? 'Locating...' : 'Add to Map'}
@@ -428,14 +425,14 @@ const ProjectMap: React.FC<ProjectMapProps> = ({ data }) => {
               <Popup>
                 <div style={{
                   padding: '10px',
-                  minWidth: '250px',
-                  fontFamily: 'monospace'
+                  minWidth: '250px'
                 }}>
                   <h3 style={{ 
                     margin: '0 0 10px 0',
-                    color: '#00aa00',
-                    borderBottom: '1px solid #00ff00',
-                    paddingBottom: '5px'
+                    color: '#1f2937',
+                    borderBottom: '1px solid #e5e7eb',
+                    paddingBottom: '5px',
+                    fontWeight: '600'
                   }}>
                     {location.projectName}
                   </h3>
@@ -454,10 +451,10 @@ const ProjectMap: React.FC<ProjectMapProps> = ({ data }) => {
                           marginLeft: '5px',
                           padding: '2px 8px',
                           borderRadius: '3px',
-                          backgroundColor: location.details.status === 'Active' ? '#00ff00' :
-                                        location.details.status === 'Completed' ? '#0088ff' :
-                                        location.details.status === 'On Hold' ? '#ff8800' : '#ffff00',
-                          color: '#000',
+                          backgroundColor: location.details.status === 'Active' ? '#10b981' :
+                                        location.details.status === 'Completed' ? '#3b82f6' :
+                                        location.details.status === 'On Hold' ? '#f59e0b' : '#eab308',
+                          color: 'white',
                           fontWeight: 'bold'
                         }}>
                           {location.details.status}

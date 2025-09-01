@@ -35,20 +35,25 @@ function EnhancedVacationPlanner({ data }: VacationPlannerProps) {
   }, [data]);
 
   const loadVacationData = () => {
-    if (!data?.pmData) {
-      console.log('No pmData available');
-      return;
-    }
-    
-    console.log('Available sheets:', data.pmData.map((s: any) => s.sheet_name));
-    
+    // Check if vacation data is directly available
     let vacationSheet = null;
-    for (const sheet of (data.pmData as any[])) {
-      if (sheet.sheet_name && sheet.sheet_name.toLowerCase().includes('vacation')) {
-        vacationSheet = sheet;
-        console.log('Found vacation sheet:', sheet.sheet_name);
-        break;
+    
+    if (data?.vacation) {
+      vacationSheet = data.vacation;
+      console.log('Using cached vacation data');
+    } else if (data?.pmData) {
+      console.log('Available sheets:', data.pmData.map((s: any) => s.sheet_name));
+      
+      for (const sheet of (data.pmData as any[])) {
+        if (sheet.sheet_name && sheet.sheet_name.toLowerCase().includes('vacation')) {
+          vacationSheet = sheet;
+          console.log('Found vacation sheet:', sheet.sheet_name);
+          break;
+        }
       }
+    } else {
+      console.log('No vacation data available');
+      return;
     }
     
     if (vacationSheet) {

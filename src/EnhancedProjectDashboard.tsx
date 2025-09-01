@@ -1,5 +1,6 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect } from 'react';
 import { invoke } from '@tauri-apps/api/core';
+import { ColumnHeader, DataSourceMapping, ColumnMapping } from './components/DataSourceMapping';
 
 interface Project {
   id: string;
@@ -85,6 +86,34 @@ function EnhancedProjectDashboard({ data }: { data?: any }) {
   const [expandedActivities, setExpandedActivities] = useState<Set<string>>(new Set());
   const [projectNotes, setProjectNotes] = useState<{[key: string]: string}>({});
   const [notesSaveTimeout, setNotesSaveTimeout] = useState<NodeJS.Timeout | null>(null);
+  const [showMappingEditor, setShowMappingEditor] = useState<string | null>(null); // Edit mappings
+  
+  // Define column mappings for project list view
+  const [projectListMappings, setProjectListMappings] = useState<{ [key: string]: ColumnMapping }>({
+    projectName: { displayName: 'Project Name', source: 'P', column: 'B', editable: true },
+    client: { displayName: 'Client', source: 'P', column: 'C', editable: true },
+    budget: { displayName: 'Budget', source: 'P', column: 'D', editable: true },
+    spent: { displayName: 'Spent', source: 'PT', column: 'Y', editable: true },
+    status: { displayName: 'Status', source: 'P', column: 'E', editable: true },
+  });
+  
+  // Define column mappings for project details view
+  const [projectDetailMappings, setProjectDetailMappings] = useState<{ [key: string]: ColumnMapping }>({
+    totalBudget: { displayName: 'Total Budget', source: 'P', column: 'D', editable: true },
+    actualSpent: { displayName: 'Actual Spent', source: 'PT', column: 'Y', editable: true },
+    startDate: { displayName: 'Start Date', source: 'P', column: 'F', editable: true },
+    endDate: { displayName: 'End Date', source: 'P', column: 'G', editable: true },
+  });
+  
+  // Define column mappings for activity table
+  // Note: Activity descriptions come from PT.xlsx transaction data
+  const [activityMappings, setActivityMappings] = useState<{ [key: string]: ColumnMapping }>({
+    activity: { displayName: 'Activity', source: 'PT', column: 'F', editable: true }, // Activity Description column in PT (corrected)
+    subProject: { displayName: 'Sub-Project', source: 'PT', column: 'I', editable: true }, // Sub Project Description column in PT
+    activityBudget: { displayName: 'Budget', source: 'AE', column: 'L', editable: true },
+    activitySpent: { displayName: 'Spent', source: 'PT', column: 'Y', editable: true }, // Total Internal Price
+    hours: { displayName: 'Hours', source: 'PT', column: 'S', editable: true }, // Internal Quantity
+  });
 
   // Process data on mount or when data prop changes
   useEffect(() => {
@@ -243,6 +272,7 @@ function EnhancedProjectDashboard({ data }: { data?: any }) {
       };
 
       console.log('Column indices found:', indices);
+      console.log('Activity Description is in column:', String.fromCharCode(65 + indices.activityDesc), '(index', indices.activityDesc, ')');
 
       // Group transactions by project and activity
       const activityMap = new Map<string, Activity>();
@@ -487,6 +517,27 @@ function EnhancedProjectDashboard({ data }: { data?: any }) {
     setNotesSaveTimeout(timeout);
   };
 
+  // Handle mapping changes for different views
+  const handleMappingChange = (key: string, newMapping: ColumnMapping) => {
+    if (showMappingEditor === 'project-list') {
+      setProjectListMappings(prev => ({
+        ...prev,
+        [key]: newMapping
+      }));
+    } else if (showMappingEditor === 'project-detail') {
+      setProjectDetailMappings(prev => ({
+        ...prev,
+        [key]: newMapping
+      }));
+    } else if (showMappingEditor === 'activity-table') {
+      setActivityMappings(prev => ({
+        ...prev,
+        [key]: newMapping
+      }));
+    }
+    // In a real app, you'd trigger data reprocessing here
+  };
+
   return (
     <div style={{ 
       fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
@@ -501,7 +552,7 @@ function EnhancedProjectDashboard({ data }: { data?: any }) {
       }}>
         <div style={{ maxWidth: '1400px', margin: '0 auto' }}>
           <h1 style={{ fontSize: '32px', fontWeight: '700', color: '#0f172a', margin: '0 0 10px 0' }}>
-            📊 Enhanced Project Dashboard with Activity Details
+            📊 Enhanced Project Dashboard with Activity Details & Mappings
           </h1>
           <p style={{ color: '#64748b', fontSize: '16px', margin: 0 }}>{status}</p>
         </div>
@@ -519,27 +570,100 @@ function EnhancedProjectDashboard({ data }: { data?: any }) {
 
         {projects.size > 0 && (
           <>
+            {/* Data Source Mapping Editor Modal */}
+            {showMappingEditor && (
+              <>
+                <div 
+                  style={{
+                    position: 'fixed',
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    bottom: 0,
+                    background: 'rgba(0, 0, 0, 0.5)',
+                    zIndex: 999
+                  }}
+                  onClick={() => setShowMappingEditor(null)}
+                />
+                <DataSourceMapping 
+                  mappings={
+                    showMappingEditor === 'project-list' ? projectListMappings :
+                    showMappingEditor === 'project-detail' ? projectDetailMappings :
+                    activityMappings
+                  }
+                  onMappingChange={handleMappingChange}
+                  onClose={() => setShowMappingEditor(null)}
+                />
+              </>
+            )}
+
             {/* Projects List - Alphabetical Table */}
             {!selectedProject && (
-              <div style={{ 
-                backgroundColor: 'white',
-                borderRadius: '12px',
-                overflow: 'hidden',
-                boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
-              }}>
-                <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                  <thead>
-                    <tr style={{ backgroundColor: '#f8fafc', borderBottom: '2px solid #e5e7eb' }}>
-                      <th style={{ padding: '12px', textAlign: 'left', fontSize: '13px', fontWeight: '600' }}>Project Name</th>
-                      <th style={{ padding: '12px', textAlign: 'left', fontSize: '13px', fontWeight: '600' }}>Client</th>
-                      <th style={{ padding: '12px', textAlign: 'right', fontSize: '13px', fontWeight: '600' }}>Budget</th>
-                      <th style={{ padding: '12px', textAlign: 'right', fontSize: '13px', fontWeight: '600' }}>Spent</th>
-                      <th style={{ padding: '12px', textAlign: 'right', fontSize: '13px', fontWeight: '600' }}>Remaining</th>
-                      <th style={{ padding: '12px', textAlign: 'center', fontSize: '13px', fontWeight: '600' }}>Status</th>
-                      <th style={{ padding: '12px', textAlign: 'center', fontSize: '13px', fontWeight: '600' }}>Activities</th>
-                      <th style={{ padding: '12px', textAlign: 'center', fontSize: '13px', fontWeight: '600' }}>Team</th>
-                    </tr>
-                  </thead>
+              <div>
+                <div style={{ 
+                  display: 'flex', 
+                  justifyContent: 'flex-end', 
+                  marginBottom: '10px'
+                }}>
+                  <button
+                    onClick={() => setShowMappingEditor('project-list')}
+                    style={{
+                      padding: '8px 16px',
+                      background: '#3b82f6',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '6px',
+                      cursor: 'pointer',
+                      fontSize: '14px',
+                      fontWeight: '500'
+                    }}
+                    title="Edit data source mappings"
+                  >
+                    📊 Edit Mappings
+                  </button>
+                </div>
+                <div style={{ 
+                  backgroundColor: 'white',
+                  borderRadius: '12px',
+                  overflow: 'hidden',
+                  boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
+                }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                    <thead>
+                      <tr style={{ backgroundColor: '#f8fafc', borderBottom: '2px solid #e5e7eb' }}>
+                        <ColumnHeader 
+                          label="Project Name" 
+                          mapping={projectListMappings.projectName}
+                          onEditClick={() => setShowMappingEditor('project-list')}
+                        />
+                        <ColumnHeader 
+                          label="Client" 
+                          mapping={projectListMappings.client}
+                          onEditClick={() => setShowMappingEditor('project-list')}
+                        />
+                        <ColumnHeader 
+                          label="Budget" 
+                          mapping={projectListMappings.budget}
+                          onEditClick={() => setShowMappingEditor('project-list')}
+                          textAlign="right"
+                        />
+                        <ColumnHeader 
+                          label="Spent" 
+                          mapping={projectListMappings.spent}
+                          onEditClick={() => setShowMappingEditor('project-list')}
+                          textAlign="right"
+                        />
+                        <th style={{ padding: '12px', textAlign: 'right', fontSize: '13px', fontWeight: '600' }}>Remaining</th>
+                        <ColumnHeader 
+                          label="Status" 
+                          mapping={projectListMappings.status}
+                          onEditClick={() => setShowMappingEditor('project-list')}
+                          textAlign="center"
+                        />
+                        <th style={{ padding: '12px', textAlign: 'center', fontSize: '13px', fontWeight: '600' }}>Activities</th>
+                        <th style={{ padding: '12px', textAlign: 'center', fontSize: '13px', fontWeight: '600' }}>Team</th>
+                      </tr>
+                    </thead>
                   <tbody>
                     {Array.from(projects.entries())
                       .sort(([, a], [, b]) => a.name.localeCompare(b.name))
@@ -597,26 +721,49 @@ function EnhancedProjectDashboard({ data }: { data?: any }) {
                         );
                       })}
                   </tbody>
-                </table>
+                  </table>
+                </div>
               </div>
             )}
 
             {/* Project Detail View */}
             {selectedProject && projects.get(selectedProject) && (
               <div>
-                <button
-                  onClick={() => setSelectedProject('')}
-                  style={{
-                    padding: '8px 16px',
-                    backgroundColor: '#f1f5f9',
-                    border: '1px solid #e5e7eb',
-                    borderRadius: '6px',
-                    cursor: 'pointer',
-                    marginBottom: '20px'
-                  }}
-                >
-                  ← Back to Projects
-                </button>
+                <div style={{ 
+                  display: 'flex', 
+                  justifyContent: 'space-between', 
+                  alignItems: 'center',
+                  marginBottom: '20px'
+                }}>
+                  <button
+                    onClick={() => setSelectedProject('')}
+                    style={{
+                      padding: '8px 16px',
+                      backgroundColor: '#f1f5f9',
+                      border: '1px solid #e5e7eb',
+                      borderRadius: '6px',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    ← Back to Projects
+                  </button>
+                  <button
+                    onClick={() => setShowMappingEditor('project-detail')}
+                    style={{
+                      padding: '8px 16px',
+                      background: '#3b82f6',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '6px',
+                      cursor: 'pointer',
+                      fontSize: '14px',
+                      fontWeight: '500'
+                    }}
+                    title="Edit data source mappings"
+                  >
+                    📊 Edit Mappings
+                  </button>
+                </div>
 
                 {/* Project Header */}
                 <div style={{ 
@@ -733,22 +880,64 @@ function EnhancedProjectDashboard({ data }: { data?: any }) {
                   <div style={{ 
                     padding: '20px',
                     borderBottom: '2px solid #e5e7eb',
-                    backgroundColor: '#f8fafc'
+                    backgroundColor: '#f8fafc',
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center'
                   }}>
                     <h3 style={{ margin: 0, fontSize: '18px' }}>
                       Sub-Activities ({projects.get(selectedProject)!.activities.length})
                     </h3>
+                    <button
+                      onClick={() => setShowMappingEditor('activity-table')}
+                      style={{
+                        padding: '6px 12px',
+                        background: '#3b82f6',
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: '4px',
+                        cursor: 'pointer',
+                        fontSize: '12px',
+                        fontWeight: '500'
+                      }}
+                      title="Edit mappings for activity table"
+                    >
+                      📊 Edit Mappings
+                    </button>
                   </div>
                   
                   <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                     <thead>
                       <tr style={{ backgroundColor: '#f8fafc', borderBottom: '1px solid #e5e7eb' }}>
-                        <th style={{ padding: '12px', textAlign: 'left', fontSize: '12px', fontWeight: '600' }}>Activity</th>
-                        <th style={{ padding: '12px', textAlign: 'left', fontSize: '12px', fontWeight: '600' }}>Sub-Project</th>
-                        <th style={{ padding: '12px', textAlign: 'right', fontSize: '12px', fontWeight: '600' }}>Budget</th>
-                        <th style={{ padding: '12px', textAlign: 'right', fontSize: '12px', fontWeight: '600' }}>Spent</th>
+                        <ColumnHeader 
+                          label="Activity" 
+                          mapping={activityMappings.activity}
+                          onEditClick={() => setShowMappingEditor('activity-table')}
+                        />
+                        <ColumnHeader 
+                          label="Sub-Project" 
+                          mapping={activityMappings.subProject}
+                          onEditClick={() => setShowMappingEditor('activity-table')}
+                        />
+                        <ColumnHeader 
+                          label="Budget" 
+                          mapping={activityMappings.activityBudget}
+                          onEditClick={() => setShowMappingEditor('activity-table')}
+                          textAlign="right"
+                        />
+                        <ColumnHeader 
+                          label="Spent" 
+                          mapping={activityMappings.activitySpent}
+                          onEditClick={() => setShowMappingEditor('activity-table')}
+                          textAlign="right"
+                        />
                         <th style={{ padding: '12px', textAlign: 'right', fontSize: '12px', fontWeight: '600' }}>Remaining</th>
-                        <th style={{ padding: '12px', textAlign: 'center', fontSize: '12px', fontWeight: '600' }}>Hours</th>
+                        <ColumnHeader 
+                          label="Hours" 
+                          mapping={activityMappings.hours}
+                          onEditClick={() => setShowMappingEditor('activity-table')}
+                          textAlign="center"
+                        />
                         <th style={{ padding: '12px', textAlign: 'center', fontSize: '12px', fontWeight: '600' }}>Team</th>
                         <th style={{ padding: '12px', textAlign: 'center', fontSize: '12px', fontWeight: '600' }}>Actions</th>
                       </tr>

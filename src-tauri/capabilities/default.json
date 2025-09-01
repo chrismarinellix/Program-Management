@@ -7,6 +7,16 @@
     "core:default",
     "opener:default",
     "core:webview:default",
-    "core:window:default"
+    "core:window:default",
+    "dialog:default",
+    "dialog:allow-open",
+    "dialog:allow-save",
+    "dialog:allow-message",
+    "dialog:allow-ask",
+    "dialog:allow-confirm",
+    "sql:default",
+    "sql:allow-execute",
+    "sql:allow-select",
+    "sql:allow-load"
   ]
 }

@@ -1,8 +1,15 @@
-# Windows Setup Guide for Program Management
+# Windows Setup Guide for Program Management Tool
 
-## Prerequisites for Windows
+## ✅ Windows Compatibility Confirmed
 
-### Required Software
+This application is fully compatible with Windows 10/11. All features including the new data source mapping functionality work on Windows.
+
+## System Requirements
+
+- Windows 10/11 (64-bit)
+- Node.js 18+ 
+- Visual Studio 2022 Build Tools (for Rust compilation)
+- WebView2 Runtime (usually pre-installed on Windows 10/11)
 
 1. **Node.js** (v18 or higher)
    - Download from: https://nodejs.org/

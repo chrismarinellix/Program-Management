@@ -9,6 +9,7 @@ interface ExcelEditorProps {
 
 function ExcelEditor({ data, sheetName, filePath = '/Users/chris/Downloads/Program_Management.xlsm' }: ExcelEditorProps) {
   const [headers, setHeaders] = useState<string[]>([]);
+  const [displayHeaders, setDisplayHeaders] = useState<string[]>([]);
   const [rows, setRows] = useState<any[][]>([]);
   const [editedCells, setEditedCells] = useState<Map<string, any>>(new Map());
   const [filters, setFilters] = useState<Map<number, string>>(new Map());
@@ -25,14 +26,25 @@ function ExcelEditor({ data, sheetName, filePath = '/Users/chris/Downloads/Progr
   }, [filters, rows]);
 
   const loadSheetData = () => {
-    if (!data?.pmData) return;
+    // Reset display headers when loading new data
+    setDisplayHeaders([]);
     
-    // Find the specified sheet
+    // Check if data is directly available (from new cache structure)
     let targetSheet = null;
-    for (const sheet of (data.pmData as any[])) {
-      if (sheet.sheet_name && sheet.sheet_name.toLowerCase().includes(sheetName.toLowerCase())) {
-        targetSheet = sheet;
-        break;
+    
+    if (sheetName.toLowerCase() === 'program' && data?.program) {
+      targetSheet = data.program;
+    } else if (sheetName.toLowerCase() === 'pipeline' && data?.pipeline) {
+      targetSheet = data.pipeline;
+    } else if (sheetName.toLowerCase() === 'vacation' && data?.vacation) {
+      targetSheet = data.vacation;
+    } else if (data?.pmData) {
+      // Fallback to old structure
+      for (const sheet of (data.pmData as any[])) {
+        if (sheet.sheet_name && sheet.sheet_name.toLowerCase().includes(sheetName.toLowerCase())) {
+          targetSheet = sheet;
+          break;
+        }
       }
     }
     
@@ -43,32 +55,32 @@ function ExcelEditor({ data, sheetName, filePath = '/Users/chris/Downloads/Progr
       setRows(sheetRows);
       setFilteredRows(sheetRows);
       
-      // For Program Management, only show specific columns
+      // Initialize display headers to match actual headers by default
+      setDisplayHeaders(allHeaders);
+      
+      // For Program Management, show ALL columns with actual headers first to debug
       if (sheetName.toLowerCase() === 'program') {
-        const columnsToShow = [
-          'owner', 'rp', 'project', 'activity', 'client', 'customer',
-          'commentary', 'key commentary', 'actions', 'issues', 
-          'vo', 'phase', 'target', 'timeframe', 'date', 'milestone'
-        ];
+        // Log what we actually have
+        console.log('=== PROGRAM SHEET DEBUG ===');
+        console.log('Total headers:', allHeaders.length);
+        console.log('All headers:', allHeaders);
+        console.log('First row data:', sheetRows[0]);
         
-        const visibleCols: number[] = [];
-        allHeaders.forEach((header: string, index: number) => {
-          const headerLower = header.toLowerCase();
-          if (columnsToShow.some(col => headerLower.includes(col))) {
-            visibleCols.push(index);
-          }
-        });
+        // Show all columns to see what we're working with
+        const allIndices = allHeaders.map((_: any, i: number) => i);
+        setDisplayHeaders(allHeaders);
+        setVisibleColumns(allIndices);
         
-        // If no columns matched, show first 10 columns as fallback
-        if (visibleCols.length === 0) {
-          for (let i = 0; i < Math.min(10, allHeaders.length); i++) {
-            visibleCols.push(i);
-          }
+        // Log sample data for debugging
+        if (sheetRows.length > 0) {
+          console.log('Sample data mapping:');
+          allHeaders.forEach((header: string, idx: number) => {
+            console.log(`Column ${idx} - "${header}": "${getCellValue(sheetRows[0][idx], false)}"`);
+          });
         }
-        
-        setVisibleColumns(visibleCols);
       } else {
         // Show all columns for other sheets
+        setDisplayHeaders(allHeaders);
         setVisibleColumns(allHeaders.map((_: any, i: number) => i));
       }
     }
@@ -241,6 +253,10 @@ function ExcelEditor({ data, sheetName, filePath = '/Users/chris/Downloads/Progr
                     return null;
                   }
                   
+                  // Find the display header for this column
+                  const displayIndex = visibleColumns.indexOf(index);
+                  const displayHeader = displayHeaders[displayIndex] || header;
+                  
                   return (
                   <th key={index} style={{ 
                     padding: '12px',
@@ -251,7 +267,7 @@ function ExcelEditor({ data, sheetName, filePath = '/Users/chris/Downloads/Progr
                     minWidth: '150px'
                   }}>
                     <div style={{ marginBottom: '8px', fontWeight: '600', fontSize: '13px' }}>
-                      {header}
+                      {displayHeader}
                     </div>
                     <input
                       type="text"

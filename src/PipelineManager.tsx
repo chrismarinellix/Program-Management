@@ -39,29 +39,35 @@ function PipelineManager({ data }: { data?: any }) {
   // Load Pipeline data from cached data or fetch if needed
   const loadPipelineData = async () => {
     try {
-      let pipelineData;
+      let pipelineSheet;
       
-      if (data?.pmData) {
-        // Use cached data
-        pipelineData = data.pmData;
-      } else {
-        // Fallback to fetching
-        const filePath = '/Users/chris/Downloads/Program_Management.xlsm';
-        pipelineData = await invoke('read_excel', { filePath });
-      }
-      
-      // Find the Pipeline sheet
-      let pipelineSheet = null;
-      for (const sheet of (pipelineData as any[])) {
-        if (sheet.sheet_name && sheet.sheet_name.toLowerCase().includes('pipeline')) {
-          pipelineSheet = sheet;
-          break;
+      // Check if pipeline data is directly available
+      if (data?.pipeline) {
+        // Use the pipeline sheet directly from cache
+        pipelineSheet = data.pipeline;
+        console.log('Using cached pipeline data');
+      } else if (data?.pmData) {
+        // Fallback to searching in pmData array
+        console.log('Searching for pipeline in pmData');
+        for (const sheet of (data.pmData as any[])) {
+          if (sheet.sheet_name && sheet.sheet_name.toLowerCase().includes('pipeline')) {
+            pipelineSheet = sheet;
+            break;
+          }
         }
-      }
-      
-      if (!pipelineSheet) {
-        // If no pipeline sheet, use the first sheet
-        pipelineSheet = (pipelineData as any[])[0];
+      } else {
+        // Final fallback to fetching
+        console.log('Fetching fresh pipeline data');
+        const filePath = '/Users/chris/Downloads/Program_Management.xlsm';
+        const pipelineData = await invoke('read_excel', { filePath });
+        
+        // Find the Pipeline sheet
+        for (const sheet of (pipelineData as any[])) {
+          if (sheet.sheet_name && sheet.sheet_name.toLowerCase().includes('pipeline')) {
+            pipelineSheet = sheet;
+            break;
+          }
+        }
       }
       
       if (pipelineSheet) {

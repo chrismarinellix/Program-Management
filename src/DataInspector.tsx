@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import DataSourceTable from './components/DataSourceTable';
 
 interface DataInspectorProps {
   data: any;
@@ -109,6 +110,11 @@ const DataInspector: React.FC<DataInspectorProps> = ({ data }) => {
       fontFamily: 'monospace'
     }}>
       <h1 style={{ marginBottom: '20px', color: '#1f2937' }}>📋 Data Inspector - Sheet Analysis Report</h1>
+      
+      {/* Add the new Data Source Table */}
+      <DataSourceTable />
+      
+      <hr style={{ margin: '40px 0', border: 'none', borderTop: '2px solid #e5e7eb' }} />
       
       {/* Data Source Matrix */}
       <div style={{

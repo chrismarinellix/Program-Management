@@ -2,7 +2,7 @@ mod excel;
 mod debug;
 
 use excel::{ExcelData, DataValue, CellUpdate};
-use tauri::Manager;
+use tauri::{Manager, AppHandle};
 use std::fs;
 use std::path::PathBuf;
 
@@ -10,6 +10,16 @@ use std::path::PathBuf;
 #[tauri::command]
 fn greet(name: &str) -> String {
     format!("Hello, {}! You've been greeted from Rust!", name)
+}
+
+#[tauri::command]
+fn ping() -> String {
+    "pong".to_string()
+}
+
+#[tauri::command]
+fn file_exists(path: String) -> bool {
+    std::path::Path::new(&path).exists()
 }
 
 #[tauri::command]
@@ -76,18 +86,30 @@ async fn load_project_notes(project_id: String) -> Result<String, String> {
     }
 }
 
+#[tauri::command]
+async fn open_file_dialog() -> Result<Option<String>, String> {
+    // For Tauri v2, we'll handle file dialog on the frontend using the dialog plugin
+    // This command is kept as a placeholder but the actual dialog will be handled in JS
+    Ok(None)
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
+        .plugin(tauri_plugin_dialog::init())
+        .plugin(tauri_plugin_sql::Builder::new().build())
         .invoke_handler(tauri::generate_handler![
             greet,
+            ping,
+            file_exists,
             read_excel,
             write_excel,
             update_cell,
             update_excel_cells,
             save_project_notes,
-            load_project_notes
+            load_project_notes,
+            open_file_dialog
         ])
         .setup(|app| {
             // Start maximized (fullscreen can be problematic on some systems)

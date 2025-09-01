@@ -115,6 +115,42 @@ When handling requests, prioritize in this order:
 3. **Maintain existing features** without modification
 4. **Ask for clarification** if requirements unclear
 
+### 11. Tauri v2 Plugin Permissions (CRITICAL)
+
+#### Important Security Change in Tauri v2:
+Tauri v2 requires **explicit permissions** for all plugin features. Without proper permissions in the capabilities file, plugins will load but **silently fail** with no error messages.
+
+#### When Adding Any Tauri Plugin:
+1. **Install the plugin** in both package.json and Cargo.toml
+2. **Initialize the plugin** in src-tauri/src/lib.rs
+3. **CRITICAL: Add permissions** to src-tauri/capabilities/default.json
+4. **Restart the application** (permissions require restart)
+
+#### Example - Dialog Plugin:
+```json
+// src-tauri/capabilities/default.json
+{
+  "permissions": [
+    "dialog:default",
+    "dialog:allow-open",
+    "dialog:allow-save"
+  ]
+}
+```
+
+#### Common Plugin Permissions:
+- **Dialog**: `dialog:default`, `dialog:allow-open`, `dialog:allow-save`
+- **FS**: `fs:default`, `fs:allow-read`, `fs:allow-write`
+- **Shell**: `shell:default`, `shell:allow-execute`
+- **HTTP**: `http:default`, `http:allow-fetch`
+
+#### Debugging Permission Issues:
+1. If a plugin function doesn't work but shows no errors
+2. Check src-tauri/capabilities/default.json
+3. Add required permissions
+4. **Restart the application** (critical!)
+5. See TROUBLESHOOTING.md for detailed examples
+
 ## Summary
 
 The golden rule: **DO EXACTLY WHAT IS REQUESTED - NOTHING MORE, NOTHING LESS**
