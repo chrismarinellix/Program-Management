@@ -1,5 +1,10 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { invoke } from '@tauri-apps/api/core';
+import ColumnManager from './components/ColumnManager';
+import { useColumnManager } from './hooks/useColumnManager';
+import AdvancedFilter from './components/AdvancedFilter';
+import { getDataSourceInfo } from './config/dataSourceMapping';
+import { getCurrentColumnMappings } from './services/columnMappingService';
 
 interface PipelineRow {
   rowIndex: number;
@@ -21,6 +26,7 @@ interface EditCell {
 }
 
 function PipelineManager({ data }: { data?: any }) {
+  const [currentColumnMappings, setCurrentColumnMappings] = useState(getCurrentColumnMappings());
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [status, setStatus] = useState('');
@@ -35,43 +41,29 @@ function PipelineManager({ data }: { data?: any }) {
   const [globalFilter, setGlobalFilter] = useState('');
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
   const [selectedColumns, setSelectedColumns] = useState<Set<number>>(new Set());
+  const [showAdvancedFilter, setShowAdvancedFilter] = useState(false);
+  const [rawData, setRawData] = useState<any[][]>([]);
+
+  // Column manager integration
+  const columnManager = useColumnManager({
+    defaultColumns: headers,
+    storageKey: 'pipelineManager'
+  });
 
   // Load Pipeline data from cached data or fetch if needed
   const loadPipelineData = async () => {
     try {
-      let pipelineSheet;
+      let pipelineSheet = data; // data is already the pipeline sheet from PipelineManagerCached
       
-      // Check if pipeline data is directly available
-      if (data?.pipeline) {
-        // Use the pipeline sheet directly from cache
-        pipelineSheet = data.pipeline;
-        console.log('Using cached pipeline data');
-      } else if (data?.pmData) {
-        // Fallback to searching in pmData array
-        console.log('Searching for pipeline in pmData');
-        for (const sheet of (data.pmData as any[])) {
-          if (sheet.sheet_name && sheet.sheet_name.toLowerCase().includes('pipeline')) {
-            pipelineSheet = sheet;
-            break;
-          }
-        }
-      } else {
-        // Final fallback to fetching
-        console.log('Fetching fresh pipeline data');
-        const filePath = '/Users/chris/Downloads/Program_Management.xlsm';
-        const pipelineData = await invoke('read_excel', { filePath });
-        
-        // Find the Pipeline sheet
-        for (const sheet of (pipelineData as any[])) {
-          if (sheet.sheet_name && sheet.sheet_name.toLowerCase().includes('pipeline')) {
-            pipelineSheet = sheet;
-            break;
-          }
-        }
-      }
+      console.log('Pipeline data received:', {
+        hasData: !!data,
+        sheetName: data?.sheet_name,
+        headers: data?.headers?.slice(0, 5),
+        rowCount: data?.rows?.length
+      });
       
-      if (pipelineSheet) {
-        console.log('Pipeline sheet found:', pipelineSheet.sheet_name);
+      if (pipelineSheet && pipelineSheet.headers && pipelineSheet.rows) {
+        console.log('Pipeline sheet found:', pipelineSheet.sheet_name || 'Pipeline');
         console.log('Headers from backend:', pipelineSheet.headers);
         console.log('Number of data rows:', pipelineSheet.rows?.length);
         
@@ -89,6 +81,7 @@ function PipelineManager({ data }: { data?: any }) {
         
         setRows(pipelineRows);
         setFilteredRows(pipelineRows);
+        setRawData(pipelineSheet.rows || []);
         
         // Set default column widths based on content
         const widths = new Map<number, number>();
@@ -104,6 +97,9 @@ function PipelineManager({ data }: { data?: any }) {
         setColumnWidths(widths);
         
         setStatus(`${pipelineRows.length} rows loaded from Pipeline`);
+      } else {
+        console.log('No pipeline data available or data is malformed');
+        setStatus('No pipeline data available - please check Excel file and Force Reload');
       }
     } catch (error: any) {
       console.error('Error loading pipeline data:', error);
@@ -116,6 +112,21 @@ function PipelineManager({ data }: { data?: any }) {
   useEffect(() => {
     loadPipelineData();
   }, [data]);
+
+  // Listen for column mapping updates
+  useEffect(() => {
+    const handleMappingUpdate = (event: CustomEvent) => {
+      setCurrentColumnMappings(event.detail);
+    };
+
+    window.addEventListener('columnMappingsUpdated', handleMappingUpdate as EventListener);
+    window.addEventListener('columnMappingsReset', handleMappingUpdate as EventListener);
+
+    return () => {
+      window.removeEventListener('columnMappingsUpdated', handleMappingUpdate as EventListener);
+      window.removeEventListener('columnMappingsReset', handleMappingUpdate as EventListener);
+    };
+  }, []);
 
   const getCellValue = (cell: any): any => {
     if (!cell) return '';
@@ -324,6 +335,16 @@ function PipelineManager({ data }: { data?: any }) {
     setColumnWidths(newWidths);
   };
 
+  // Advanced filter handler
+  const handleAdvancedFilterChange = (filteredData: any[][]) => {
+    const filteredRows: PipelineRow[] = filteredData.map((row: any[], index: number) => ({
+      rowIndex: index,
+      data: row.map((cell: any) => getCellValue(cell)),
+      edited: false
+    }));
+    setFilteredRows(filteredRows);
+  };
+
   return (
     <div style={{ 
       fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
@@ -334,6 +355,41 @@ function PipelineManager({ data }: { data?: any }) {
     }}>
 
       <div style={{ padding: '20px', flex: 1, overflow: 'auto' }}>
+        {/* Data Source Information */}
+        <div style={{
+          backgroundColor: '#f8fafc',
+          border: '1px solid #e5e7eb',
+          borderRadius: '8px',
+          padding: '16px',
+          marginBottom: '20px'
+        }}>
+          <h4 style={{
+            margin: '0 0 8px 0',
+            fontSize: '14px',
+            fontWeight: '600',
+            color: '#374151',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px'
+          }}>
+            📊 Pipeline Data Source Information
+          </h4>
+          <div style={{ fontSize: '13px', color: '#6b7280', lineHeight: '1.5' }}>
+            <p style={{ margin: '4px 0' }}>
+              <strong>Source:</strong> Program_Management.xlsm → Pipeline sheet
+            </p>
+            <p style={{ margin: '4px 0' }}>
+              <strong>Headers:</strong> Row 11 (automatically handled by backend)
+            </p>
+            <p style={{ margin: '4px 0' }}>
+              <strong>Mapped Columns:</strong> Columns marked with 📊 are part of the defined column mapping for calculations
+            </p>
+            <p style={{ margin: '4px 0', color: '#059669' }}>
+              <strong>Status:</strong> {status}
+            </p>
+          </div>
+        </div>
+
         {headers.length > 0 && (
           <>
             {/* Enhanced Filter Bar */}
@@ -509,6 +565,32 @@ function PipelineManager({ data }: { data?: any }) {
                     Export Filtered
                   </button>
                   <button
+                    onClick={() => setShowAdvancedFilter(true)}
+                    style={{
+                      padding: '8px 16px',
+                      backgroundColor: '#f59e0b',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '6px',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    🔍 Advanced Filter
+                  </button>
+                  <button
+                    onClick={() => columnManager.setShowColumnManager(true)}
+                    style={{
+                      padding: '8px 16px',
+                      backgroundColor: '#8b5cf6',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '6px',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    ⚙️ Columns
+                  </button>
+                  <button
                     onClick={saveChanges}
                     disabled={editedCells.size === 0 || saving}
                     style={{
@@ -543,8 +625,8 @@ function PipelineManager({ data }: { data?: any }) {
                   }}>
                     <tr>
                       {headers.map((header, index) => {
-                        // Skip column if not selected in advanced filters
-                        if (selectedColumns.size > 0 && !selectedColumns.has(index)) {
+                        // Skip column if hidden by column manager
+                        if (!columnManager.isColumnVisible(header)) {
                           return null;
                         }
                         return (
@@ -573,10 +655,30 @@ function PipelineManager({ data }: { data?: any }) {
                                 cursor: 'pointer',
                                 fontWeight: '600',
                                 fontSize: '13px',
-                                color: '#1e293b'
+                                color: '#1e293b',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '4px'
                               }}
                             >
                               {header}
+                              {/* Show column mapping indicator */}
+                              {currentColumnMappings['Program_Management.xlsm'] && 
+                               Object.values(currentColumnMappings['Program_Management.xlsm']).includes(header) && (
+                                <span 
+                                  style={{ 
+                                    backgroundColor: '#10b981',
+                                    color: 'white',
+                                    fontSize: '10px',
+                                    padding: '2px 4px',
+                                    borderRadius: '3px',
+                                    fontWeight: 'bold'
+                                  }}
+                                  title={`Mapped column: ${header}`}
+                                >
+                                  📊
+                                </span>
+                              )}
                               {sortColumn === index && (
                                 <span style={{ marginLeft: '5px' }}>
                                   {sortDirection === 'asc' ? '▲' : '▼'}
@@ -646,8 +748,8 @@ function PipelineManager({ data }: { data?: any }) {
                         }}
                       >
                         {row.data.map((cell, cellIndex) => {
-                          // Skip column if not selected in advanced filters
-                          if (selectedColumns.size > 0 && !selectedColumns.has(cellIndex)) {
+                          // Skip column if hidden by column manager
+                          if (cellIndex >= headers.length || !columnManager.isColumnVisible(headers[cellIndex])) {
                             return null;
                           }
                           return (
@@ -692,6 +794,27 @@ function PipelineManager({ data }: { data?: any }) {
             </div>
           </>
         )}
+        
+        {/* Advanced Filter Modal */}
+        <AdvancedFilter
+          columns={headers}
+          data={rawData}
+          onFilterChange={handleAdvancedFilterChange}
+          isVisible={showAdvancedFilter}
+          onClose={() => setShowAdvancedFilter(false)}
+        />
+        
+        {/* Column Manager Modal */}
+        <ColumnManager
+          columns={columnManager.allColumns}
+          hiddenColumns={columnManager.hiddenColumns}
+          customColumns={columnManager.customColumns}
+          onToggleColumn={columnManager.toggleColumn}
+          onAddColumn={columnManager.addColumn}
+          onRemoveColumn={columnManager.removeColumn}
+          isVisible={columnManager.showColumnManager}
+          onClose={() => columnManager.setShowColumnManager(false)}
+        />
       </div>
     </div>
   );

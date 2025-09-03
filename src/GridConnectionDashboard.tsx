@@ -8,6 +8,10 @@ import BudgetTracker from "./BudgetTracker";
 import Settings from "./Settings";
 import DataInspector from "./DataInspector";
 import ProjectMap from "./ProjectMap";
+import TimelineView from "./TimelineView";
+import ProjectBudgetReport from "./ProjectBudgetReport";
+import PipelineChart from "./PipelineChart";
+import PivotTables from "./PivotTables";
 import BudgetAlerts from "./BudgetAlerts";
 import HoursTracking from "./HoursTracking";
 import RevenueAnalysis from "./RevenueAnalysis";
@@ -40,6 +44,10 @@ function GridConnectionDashboard() {
   const [activeView, setActiveView] = useState<
     | "projects"
     | "pipeline"
+    | "pChart"
+    | "timeline"
+    | "report"
+    | "pivot"
     | "vacation"
     | "program"
     | "budget"
@@ -924,6 +932,114 @@ function GridConnectionDashboard() {
               🔄 Pipeline
             </button>
           )}
+          {!hiddenTabs.includes("pChart") && (
+            <button
+              onClick={() => setActiveView("pChart")}
+              style={{
+                padding: "8px 16px",
+                backgroundColor:
+                  activeView === "pChart" ? "#3b82f6" : "#f8f9fa",
+                color: activeView === "pChart" ? "white" : "#475569",
+                border: "none",
+                borderRadius: "6px",
+                cursor: "pointer",
+                fontWeight: "500",
+                fontSize: "13px",
+                transition: "all 0.2s",
+              }}
+              onMouseEnter={(e) =>
+                (e.currentTarget.style.backgroundColor =
+                  activeView === "pChart" ? "#3b82f6" : "#e2e8f0")
+              }
+              onMouseLeave={(e) =>
+                (e.currentTarget.style.backgroundColor =
+                  activeView === "pChart" ? "#3b82f6" : "#f8f9fa")
+              }
+            >
+              📊 pChart
+            </button>
+          )}
+          {!hiddenTabs.includes("timeline") && (
+            <button
+              onClick={() => setActiveView("timeline")}
+              style={{
+                padding: "8px 16px",
+                backgroundColor:
+                  activeView === "timeline" ? "#3b82f6" : "#f8f9fa",
+                color: activeView === "timeline" ? "white" : "#475569",
+                border: "none",
+                borderRadius: "6px",
+                cursor: "pointer",
+                fontWeight: "500",
+                fontSize: "13px",
+                transition: "all 0.2s",
+              }}
+              onMouseEnter={(e) =>
+                (e.currentTarget.style.backgroundColor =
+                  activeView === "timeline" ? "#3b82f6" : "#e2e8f0")
+              }
+              onMouseLeave={(e) =>
+                (e.currentTarget.style.backgroundColor =
+                  activeView === "timeline" ? "#3b82f6" : "#f8f9fa")
+              }
+            >
+              ⏰ Timeline
+            </button>
+          )}
+          {!hiddenTabs.includes("report") && (
+            <button
+              onClick={() => setActiveView("report")}
+              style={{
+                padding: "8px 16px",
+                backgroundColor:
+                  activeView === "report" ? "#3b82f6" : "#f8f9fa",
+                color: activeView === "report" ? "white" : "#475569",
+                border: "none",
+                borderRadius: "6px",
+                cursor: "pointer",
+                fontWeight: "500",
+                fontSize: "13px",
+                transition: "all 0.2s",
+              }}
+              onMouseEnter={(e) =>
+                (e.currentTarget.style.backgroundColor =
+                  activeView === "report" ? "#3b82f6" : "#e2e8f0")
+              }
+              onMouseLeave={(e) =>
+                (e.currentTarget.style.backgroundColor =
+                  activeView === "report" ? "#3b82f6" : "#f8f9fa")
+              }
+            >
+              📊 Report
+            </button>
+          )}
+          {!hiddenTabs.includes("pivot") && (
+            <button
+              onClick={() => setActiveView("pivot")}
+              style={{
+                padding: "8px 16px",
+                backgroundColor:
+                  activeView === "pivot" ? "#3b82f6" : "#f8f9fa",
+                color: activeView === "pivot" ? "white" : "#475569",
+                border: "none",
+                borderRadius: "6px",
+                cursor: "pointer",
+                fontWeight: "500",
+                fontSize: "13px",
+                transition: "all 0.2s",
+              }}
+              onMouseEnter={(e) =>
+                (e.currentTarget.style.backgroundColor =
+                  activeView === "pivot" ? "#3b82f6" : "#e2e8f0")
+              }
+              onMouseLeave={(e) =>
+                (e.currentTarget.style.backgroundColor =
+                  activeView === "pivot" ? "#3b82f6" : "#f8f9fa")
+              }
+            >
+              🔄 Pivot
+            </button>
+          )}
           {!hiddenTabs.includes("program") && (
             <button
               onClick={() => setActiveView("program")}
@@ -1014,6 +1130,18 @@ function GridConnectionDashboard() {
         )}
         {activeView === "pipeline" && (
           <PipelineManagerCached data={globalDataCache?.pipeline || globalDataCache?.program} />
+        )}
+        {activeView === "pChart" && (
+          <PipelineChart data={globalDataCache?.pipeline || globalDataCache?.program} />
+        )}
+        {activeView === "timeline" && (
+          <TimelineView data={globalDataCache?.pipeline || globalDataCache?.program} />
+        )}
+        {activeView === "report" && (
+          <ProjectBudgetReport data={globalDataCache} />
+        )}
+        {activeView === "pivot" && (
+          <PivotTables data={globalDataCache} />
         )}
         {activeView === "vacation" && (
           <VacationPlannerCached data={globalDataCache?.vacation || globalDataCache?.program} />

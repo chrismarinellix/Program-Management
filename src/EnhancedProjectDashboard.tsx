@@ -1,6 +1,9 @@
 import { useState, useEffect } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import { ColumnHeader, DataSourceMapping, ColumnMapping } from './components/DataSourceMapping';
+import ColumnManager from './components/ColumnManager';
+import { useColumnManager } from './hooks/useColumnManager';
+import { ColumnMappingService } from './services/columnMappingService';
 
 interface Project {
   id: string;
@@ -538,6 +541,42 @@ function EnhancedProjectDashboard({ data }: { data?: any }) {
     // In a real app, you'd trigger data reprocessing here
   };
 
+  // Handle saving all mappings
+  const handleSaveAllMappings = (allMappings: { [key: string]: ColumnMapping }) => {
+    // Convert to column mapping format and save
+    const columnMappings = ColumnMappingService.getColumnMappings();
+    
+    // Create a mapping key based on current editor type
+    const mappingKey = showMappingEditor === 'project-list' ? 'ProjectList' :
+                      showMappingEditor === 'project-detail' ? 'ProjectDetail' :
+                      'ActivityTable';
+    
+    const updatedMappings = {
+      ...columnMappings,
+      [`${mappingKey}_Mappings`]: Object.fromEntries(
+        Object.entries(allMappings).map(([key, mapping]) => [
+          mapping.column,
+          `${mapping.displayName} (${mapping.source})`
+        ])
+      )
+    };
+    
+    const success = ColumnMappingService.saveColumnMappings(updatedMappings);
+    
+    if (success) {
+      // Update local state
+      if (showMappingEditor === 'project-list') {
+        setProjectListMappings(allMappings);
+      } else if (showMappingEditor === 'project-detail') {
+        setProjectDetailMappings(allMappings);
+      } else if (showMappingEditor === 'activity-table') {
+        setActivityMappings(allMappings);
+      }
+    }
+    
+    return success;
+  };
+
   return (
     <div style={{ 
       fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
@@ -592,7 +631,13 @@ function EnhancedProjectDashboard({ data }: { data?: any }) {
                     activityMappings
                   }
                   onMappingChange={handleMappingChange}
+                  onSaveAll={handleSaveAllMappings}
                   onClose={() => setShowMappingEditor(null)}
+                  title={`Data Source Mappings - ${
+                    showMappingEditor === 'project-list' ? 'Project List' :
+                    showMappingEditor === 'project-detail' ? 'Project Details' :
+                    'Activity Table'
+                  }`}
                 />
               </>
             )}

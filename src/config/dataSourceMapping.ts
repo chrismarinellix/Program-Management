@@ -132,6 +132,18 @@ export const columnMappings = {
     'D': 'Budget',
     'E': 'Start Date',
     'F': 'End Date'
+  },
+  'Program_Management.xlsm': {
+    'A': 'Project ID',
+    'B': 'Project Name', 
+    'C': 'Stage',
+    'D': 'Status',
+    'E': 'Owner',
+    'F': 'Expected Date',
+    'G': 'Description',
+    'H': 'Priority',
+    'I': 'Value',
+    'J': 'Notes'
   }
 };
 

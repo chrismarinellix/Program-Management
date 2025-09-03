@@ -263,6 +263,7 @@ export type ViewType =
   | 'projects' 
   | 'budget' 
   | 'pipeline' 
+  | 'pChart'
   | 'program' 
   | 'vacation' 
   | 'map' 

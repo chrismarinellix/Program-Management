@@ -1,5 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import DataSourceTable from './components/DataSourceTable';
+import { columnMappings } from './config/dataSourceMapping';
+import { ColumnMappingService } from './services/columnMappingService';
 
 interface DataInspectorProps {
   data: any;
@@ -7,6 +9,9 @@ interface DataInspectorProps {
 
 const DataInspector: React.FC<DataInspectorProps> = ({ data }) => {
   const [sheetReports, setSheetReports] = useState<any[]>([]);
+  const [pmSheets, setPmSheets] = useState<any[]>([]);
+  const [showColumnEditor, setShowColumnEditor] = useState(false);
+  const [editableColumnMappings, setEditableColumnMappings] = useState(ColumnMappingService.getColumnMappings());
 
   useEffect(() => {
     console.log('DataInspector received data:', data);
@@ -25,9 +30,51 @@ const DataInspector: React.FC<DataInspectorProps> = ({ data }) => {
     const sheets = [
       { key: 'p', workbook: 'P.xlsx', description: 'Projects Master Data' },
       { key: 'pt', workbook: 'PT.xlsx', description: 'Project Transactions (Actuals)' },
-      { key: 'ae', workbook: 'AE.xlsx', description: 'Activities Estimates (Budget)' },
-      { key: 'program', workbook: 'Program_Management.xlsm', description: 'Program Management' }
+      { key: 'ae', workbook: 'AE.xlsx', description: 'Activities Estimates (Budget)' }
     ];
+    
+    // Handle Program Management sheets separately
+    const programSheets = [];
+    if (data.pmData && Array.isArray(data.pmData)) {
+      data.pmData.forEach((sheet: any, index: number) => {
+        const sheetName = sheet.sheet_name || `Sheet${index}`;
+        const headerRow = getSheetHeaderRow(sheetName);
+        
+        programSheets.push({
+          name: sheetName,
+          headerRow,
+          totalRows: sheet.rows?.length || 0,
+          totalColumns: sheet.rows?.[headerRow - 1]?.length || 0,
+          headers: sheet.headers || [],
+          firstDataRows: getFirstDataRows(sheet, headerRow),
+          sampleData: sheet.rows?.slice(headerRow, headerRow + 3) || []
+        });
+      });
+    }
+    
+    // Also check individual sheet references
+    ['pipeline', 'program', 'vacation'].forEach(key => {
+      if (data[key]) {
+        const sheet = data[key];
+        const sheetName = sheet.sheet_name || key;
+        const headerRow = getSheetHeaderRow(sheetName);
+        
+        // Avoid duplicates
+        if (!programSheets.find(s => s.name === sheetName)) {
+          programSheets.push({
+            name: sheetName,
+            headerRow,
+            totalRows: sheet.rows?.length || 0,
+            totalColumns: sheet.rows?.[headerRow - 1]?.length || 0,
+            headers: sheet.headers || [],
+            firstDataRows: getFirstDataRows(sheet, headerRow),
+            sampleData: sheet.rows?.slice(headerRow, headerRow + 3) || []
+          });
+        }
+      }
+    });
+    
+    setPmSheets(programSheets);
     
     sheets.forEach(({ key: sheetKey, workbook, description }) => {
       const sheetData = data[sheetKey];
@@ -101,6 +148,63 @@ const DataInspector: React.FC<DataInspectorProps> = ({ data }) => {
 
     setSheetReports(reports);
   }, [data]);
+  
+  const getSheetHeaderRow = (sheetName: string): number => {
+    const name = sheetName.toLowerCase();
+    if (name.includes('pipeline')) return 11;
+    if (name.includes('program') && (name.includes('quick') || name.includes('view'))) return 3;
+    return 1;
+  };
+  
+  const getFirstDataRows = (sheet: any, headerRow: number) => {
+    if (!sheet.rows) return [];
+    
+    const dataStartRow = headerRow;
+    const rows = [];
+    
+    for (let i = dataStartRow; i < Math.min(dataStartRow + 3, sheet.rows.length); i++) {
+      if (sheet.rows[i]) {
+        rows.push({
+          rowNumber: i + 1,
+          data: sheet.rows[i].map((cell: any, idx: number) => ({
+            column: getExcelColumn(idx),
+            value: cell === null || cell === undefined ? '<empty>' : String(cell).substring(0, 50),
+            type: typeof cell
+          }))
+        });
+      }
+    }
+    return rows;
+  };
+  
+  const getExcelColumn = (index: number): string => {
+    let column = '';
+    while (index >= 0) {
+      column = String.fromCharCode(65 + (index % 26)) + column;
+      index = Math.floor(index / 26) - 1;
+    }
+    return column;
+  };
+  
+  const updateColumnMapping = (file: string, column: string, mapping: string) => {
+    setEditableColumnMappings(prev => ({
+      ...prev,
+      [file]: {
+        ...prev[file],
+        [column]: mapping
+      }
+    }));
+  };
+  
+  const saveColumnMappings = () => {
+    const success = ColumnMappingService.saveColumnMappings(editableColumnMappings);
+    if (success) {
+      alert('Column mappings saved successfully! Changes will be reflected throughout the application.');
+      setShowColumnEditor(false);
+    } else {
+      alert('Error saving column mappings. Please try again.');
+    }
+  };
 
   return (
     <div style={{
@@ -109,10 +213,123 @@ const DataInspector: React.FC<DataInspectorProps> = ({ data }) => {
       minHeight: '100vh',
       fontFamily: 'monospace'
     }}>
-      <h1 style={{ marginBottom: '20px', color: '#1f2937' }}>📋 Data Inspector - Sheet Analysis Report</h1>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+        <h1 style={{ color: '#1f2937' }}>📋 Data Inspector - Sheet Analysis Report</h1>
+        <button
+          onClick={() => setShowColumnEditor(!showColumnEditor)}
+          style={{
+            padding: '10px 20px',
+            backgroundColor: '#3b82f6',
+            color: 'white',
+            border: 'none',
+            borderRadius: '6px',
+            cursor: 'pointer',
+            fontWeight: 'bold'
+          }}
+        >
+          ⚙️ {showColumnEditor ? 'Hide' : 'Edit'} Column Mappings
+        </button>
+      </div>
       
       {/* Add the new Data Source Table */}
       <DataSourceTable />
+      
+      {/* Column Mapping Editor */}
+      {showColumnEditor && (
+        <div style={{
+          backgroundColor: '#f3f4f6',
+          padding: '20px',
+          borderRadius: '8px',
+          marginBottom: '20px',
+          border: '2px solid #3b82f6'
+        }}>
+          <h2 style={{ color: '#1f2937', marginBottom: '15px' }}>⚙️ Column Mapping Editor</h2>
+          <p style={{ marginBottom: '20px', color: '#6b7280' }}>
+            Edit column mappings that are used throughout the application for calculations and data processing.
+          </p>
+          
+          {Object.entries(editableColumnMappings).map(([fileName, mappings]) => (
+            <div key={fileName} style={{
+              backgroundColor: 'white',
+              padding: '15px',
+              marginBottom: '15px',
+              borderRadius: '6px',
+              border: '1px solid #d1d5db'
+            }}>
+              <h3 style={{ color: '#374151', marginBottom: '10px' }}>{fileName}</h3>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '10px' }}>
+                {Object.entries(mappings as Record<string, string>).map(([column, mapping]) => (
+                  <div key={column} style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <span style={{ fontWeight: 'bold', minWidth: '30px' }}>{column}:</span>
+                    <input
+                      type="text"
+                      value={mapping}
+                      onChange={(e) => updateColumnMapping(fileName, column, e.target.value)}
+                      style={{
+                        flex: 1,
+                        padding: '5px 8px',
+                        border: '1px solid #d1d5db',
+                        borderRadius: '4px',
+                        fontSize: '13px'
+                      }}
+                    />
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
+          
+          <div style={{ display: 'flex', gap: '10px', marginTop: '20px' }}>
+            <button
+              onClick={saveColumnMappings}
+              style={{
+                padding: '10px 20px',
+                backgroundColor: '#10b981',
+                color: 'white',
+                border: 'none',
+                borderRadius: '6px',
+                cursor: 'pointer',
+                fontWeight: 'bold'
+              }}
+            >
+              💾 Save Mappings
+            </button>
+            <button
+              onClick={() => {
+                const defaultMappings = ColumnMappingService.resetToDefaults();
+                setEditableColumnMappings(defaultMappings);
+              }}
+              style={{
+                padding: '10px 20px',
+                backgroundColor: '#f59e0b',
+                color: 'white',
+                border: 'none',
+                borderRadius: '6px',
+                cursor: 'pointer'
+              }}
+            >
+              🔄 Reset to Default
+            </button>
+            <button
+              onClick={() => {
+                const exported = ColumnMappingService.exportMappings();
+                navigator.clipboard.writeText(exported);
+                alert('Column mappings copied to clipboard!');
+              }}
+              style={{
+                padding: '10px 20px',
+                backgroundColor: '#6366f1',
+                color: 'white',
+                border: 'none',
+                borderRadius: '6px',
+                cursor: 'pointer'
+              }}
+            >
+              📋 Export
+            </button>
+          </div>
+        </div>
+      )}
       
       <hr style={{ margin: '40px 0', border: 'none', borderTop: '2px solid #e5e7eb' }} />
       
@@ -229,6 +446,103 @@ const DataInspector: React.FC<DataInspectorProps> = ({ data }) => {
         </div>
       </div>
       
+      {/* Program Management Sheets */}
+      {pmSheets.length > 0 && (
+        <div style={{
+          backgroundColor: '#e0f2fe',
+          padding: '20px',
+          borderRadius: '8px',
+          marginBottom: '30px',
+          boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
+        }}>
+          <h2 style={{ color: '#0277bd', marginBottom: '15px' }}>📊 Program Management Workbook Sheets</h2>
+          <p style={{ marginBottom: '20px', color: '#455a64' }}>
+            Individual analysis of each sheet within Program_Management.xlsm:
+          </p>
+          
+          {pmSheets.map((sheet, idx) => (
+            <div key={idx} style={{
+              backgroundColor: 'white',
+              padding: '15px',
+              marginBottom: '15px',
+              borderRadius: '6px',
+              border: '1px solid #81d4fa'
+            }}>
+              <h3 style={{ color: '#0277bd', marginBottom: '10px' }}>📄 {sheet.name}</h3>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '15px', marginBottom: '15px' }}>
+                <div>
+                  <strong>Header Row:</strong> {sheet.headerRow}
+                  {sheet.headerRow === 11 && <span style={{ color: '#f57c00', marginLeft: '5px' }}>⚠️ Special handling</span>}
+                </div>
+                <div><strong>Dimensions:</strong> {sheet.totalRows} rows × {sheet.totalColumns} columns</div>
+                <div><strong>Headers Available:</strong> {sheet.headers.length > 0 ? '✅ Yes' : '❌ No'}</div>
+              </div>
+              
+              {sheet.headers.length > 0 && (
+                <div style={{ marginBottom: '15px' }}>
+                  <h4 style={{ color: '#00695c', marginBottom: '8px' }}>Headers:</h4>
+                  <div style={{
+                    backgroundColor: '#f1f8e9',
+                    padding: '10px',
+                    borderRadius: '4px',
+                    fontSize: '12px',
+                    maxHeight: '100px',
+                    overflowY: 'auto'
+                  }}>
+                    {sheet.headers.map((header: string, i: number) => (
+                      <span key={i} style={{
+                        display: 'inline-block',
+                        backgroundColor: 'white',
+                        padding: '2px 6px',
+                        margin: '2px',
+                        borderRadius: '3px',
+                        border: '1px solid #c8e6c9'
+                      }}>
+                        {getExcelColumn(i)}: {header}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+              
+              {sheet.sampleData.length > 0 && (
+                <div>
+                  <h4 style={{ color: '#d32f2f', marginBottom: '8px' }}>Sample Data:</h4>
+                  <div style={{
+                    backgroundColor: '#ffebee',
+                    padding: '10px',
+                    borderRadius: '4px',
+                    fontSize: '11px',
+                    maxHeight: '200px',
+                    overflowY: 'auto'
+                  }}>
+                    {sheet.sampleData.slice(0, 5).map((row: any[], rowIdx: number) => (
+                      <div key={rowIdx} style={{ marginBottom: '8px', borderBottom: '1px solid #ffcdd2', paddingBottom: '5px' }}>
+                        <strong>Row {sheet.headerRow + rowIdx + 1}:</strong>
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '5px', marginTop: '3px' }}>
+                          {row.slice(0, 10).map((cell: any, cellIdx: number) => (
+                            <span key={cellIdx} style={{
+                              backgroundColor: 'white',
+                              padding: '1px 4px',
+                              borderRadius: '2px',
+                              border: '1px solid #ffcdd2',
+                              fontSize: '10px'
+                            }}>
+                              {getExcelColumn(cellIdx)}: {cell === null || cell === undefined ? '<empty>' : String(cell).substring(0, 20)}
+                            </span>
+                          ))}
+                          {row.length > 10 && <span style={{ color: '#9e9e9e' }}>... +{row.length - 10} more columns</span>}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+      
       {sheetReports.map((report, idx) => (
         <div key={idx} style={{
           backgroundColor: 'white',
@@ -262,6 +576,25 @@ const DataInspector: React.FC<DataInspectorProps> = ({ data }) => {
             <>
               <div style={{ marginBottom: '15px' }}>
                 <strong>Dimensions:</strong> {report.totalRows} rows × {report.totalColumns} columns
+                {editableColumnMappings[report.workbook] && (
+                  <div style={{ marginTop: '8px', padding: '8px', backgroundColor: '#f0f9ff', borderRadius: '4px' }}>
+                    <strong>Column Mappings Available:</strong>
+                    <div style={{ fontSize: '11px', marginTop: '4px' }}>
+                      {Object.entries(editableColumnMappings[report.workbook] as Record<string, string>).map(([col, mapping]) => (
+                        <span key={col} style={{
+                          display: 'inline-block',
+                          margin: '2px',
+                          padding: '2px 6px',
+                          backgroundColor: '#dbeafe',
+                          borderRadius: '3px',
+                          border: '1px solid #93c5fd'
+                        }}>
+                          {col}: {mapping}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
 
               <div style={{ marginBottom: '20px' }}>

@@ -1,6 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { savePivotCache, loadPivotCache, getLastPivotRefresh } from './services/database';
 import { ColumnHeader, DataSourceMapping, ColumnMapping } from './components/DataSourceMapping';
+import ColumnManager from './components/ColumnManager';
+import { useColumnManager } from './hooks/useColumnManager';
+import { ColumnMappingService } from './services/columnMappingService';
 
 interface PivotTablesProps {
   data: any;
@@ -39,6 +42,22 @@ const PivotTables: React.FC<PivotTablesProps> = ({ data }) => {
   const [lastRefresh, setLastRefresh] = useState<Date | null>(null);
   const [isFromCache, setIsFromCache] = useState(false);
   const [showMappingEditor, setShowMappingEditor] = useState<string | null>(null);
+  
+  // Column management for each pivot table
+  const ptColumnManager = useColumnManager({
+    defaultColumns: ['activitySeq', 'projectId', 'activityDescription', 'totalHours', 'totalCost', 'totalRevenue', 'transactionCount'],
+    storageKey: 'pivotTables_pt'
+  });
+  
+  const budgetColumnManager = useColumnManager({
+    defaultColumns: ['activitySeq', 'projectId', 'projectName', 'activityDescription', 'budgetHours', 'budgetCost', 'budgetRevenue', 'actualHours', 'actualCost', 'actualRevenue', 'variance', 'usagePercent'],
+    storageKey: 'pivotTables_budget'
+  });
+  
+  const projectColumnManager = useColumnManager({
+    defaultColumns: ['projectName', 'client', 'budget', 'spent', 'remaining', 'status', 'activities', 'team'],
+    storageKey: 'pivotTables_project'
+  });
   
   // Define separate column mappings for each pivot table
   const [ptTransactionMappings, setPtTransactionMappings] = useState<{ [key: string]: ColumnMapping }>({
@@ -98,6 +117,44 @@ const PivotTables: React.FC<PivotTablesProps> = ({ data }) => {
     if (data) {
       processPivotData();
     }
+  };
+
+  // Handle saving all mappings
+  const handleSaveAllMappings = (allMappings: { [key: string]: ColumnMapping }) => {
+    const columnMappings = ColumnMappingService.getColumnMappings();
+    
+    const mappingKey = showMappingEditor === 'pt-transactions' ? 'PivotPT' :
+                      showMappingEditor === 'budget-actual' ? 'PivotBudget' :
+                      'PivotProject';
+    
+    const updatedMappings = {
+      ...columnMappings,
+      [`${mappingKey}_Mappings`]: Object.fromEntries(
+        Object.entries(allMappings).map(([key, mapping]) => [
+          mapping.column,
+          `${mapping.displayName} (${mapping.source})`
+        ])
+      )
+    };
+    
+    const success = ColumnMappingService.saveColumnMappings(updatedMappings);
+    
+    if (success) {
+      if (showMappingEditor === 'pt-transactions') {
+        setPtTransactionMappings(allMappings);
+      } else if (showMappingEditor === 'budget-actual') {
+        setBudgetActualMappings(allMappings);
+      } else if (showMappingEditor === 'project-summary') {
+        setProjectSummaryMappings(allMappings);
+      }
+      
+      // Reprocess data with new mappings
+      if (data) {
+        processPivotData();
+      }
+    }
+    
+    return success;
   };
 
   // Load cached data on component mount
@@ -424,7 +481,13 @@ const PivotTables: React.FC<PivotTablesProps> = ({ data }) => {
               projectSummaryMappings
             }
             onMappingChange={handleMappingChange}
+            onSaveAll={handleSaveAllMappings}
             onClose={() => setShowMappingEditor(null)}
+            title={`Pivot Table Mappings - ${
+              showMappingEditor === 'pt-transactions' ? 'PT Transactions' :
+              showMappingEditor === 'budget-actual' ? 'Budget vs Actual' :
+              'Project Summary'
+            }`}
           />
         </>
       )}
@@ -448,11 +511,28 @@ const PivotTables: React.FC<PivotTablesProps> = ({ data }) => {
               borderRadius: '4px',
               cursor: 'pointer',
               fontSize: '12px',
-              fontWeight: '500'
+              fontWeight: '500',
+              marginRight: '8px'
             }}
             title="Edit mappings for this table"
           >
             📊 Edit Mappings
+          </button>
+          <button
+            onClick={() => ptColumnManager.setShowColumnManager(true)}
+            style={{
+              padding: '6px 12px',
+              background: '#8b5cf6',
+              color: 'white',
+              border: 'none',
+              borderRadius: '4px',
+              cursor: 'pointer',
+              fontSize: '12px',
+              fontWeight: '500'
+            }}
+            title="Manage columns for this table"
+          >
+            ⚙️ Columns
           </button>
         </div>
         <div style={{ overflowX: 'auto' }}>
@@ -531,11 +611,28 @@ const PivotTables: React.FC<PivotTablesProps> = ({ data }) => {
               borderRadius: '4px',
               cursor: 'pointer',
               fontSize: '12px',
-              fontWeight: '500'
+              fontWeight: '500',
+              marginRight: '8px'
             }}
             title="Edit mappings for this table"
           >
             📊 Edit Mappings
+          </button>
+          <button
+            onClick={() => budgetColumnManager.setShowColumnManager(true)}
+            style={{
+              padding: '6px 12px',
+              background: '#8b5cf6',
+              color: 'white',
+              border: 'none',
+              borderRadius: '4px',
+              cursor: 'pointer',
+              fontSize: '12px',
+              fontWeight: '500'
+            }}
+            title="Manage columns for this table"
+          >
+            ⚙️ Columns
           </button>
         </div>
         <div style={{ overflowX: 'auto' }}>
@@ -627,6 +724,23 @@ const PivotTables: React.FC<PivotTablesProps> = ({ data }) => {
           >
             📊 Edit Mappings
           </button>
+          <button
+            onClick={() => projectColumnManager.setShowColumnManager(true)}
+            style={{
+              padding: '6px 12px',
+              background: '#8b5cf6',
+              color: 'white',
+              border: 'none',
+              borderRadius: '4px',
+              cursor: 'pointer',
+              fontSize: '12px',
+              fontWeight: '500',
+              marginLeft: '8px'
+            }}
+            title="Manage columns for this table"
+          >
+            ⚙️ Columns
+          </button>
         </div>
         <div style={{ overflowX: 'auto' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
@@ -694,6 +808,40 @@ const PivotTables: React.FC<PivotTablesProps> = ({ data }) => {
           </table>
         </div>
       </div>
+      
+      {/* Column Manager Modals */}
+      <ColumnManager
+        columns={ptColumnManager.allColumns}
+        hiddenColumns={ptColumnManager.hiddenColumns}
+        customColumns={ptColumnManager.customColumns}
+        onToggleColumn={ptColumnManager.toggleColumn}
+        onAddColumn={ptColumnManager.addColumn}
+        onRemoveColumn={ptColumnManager.removeColumn}
+        isVisible={ptColumnManager.showColumnManager}
+        onClose={() => ptColumnManager.setShowColumnManager(false)}
+      />
+      
+      <ColumnManager
+        columns={budgetColumnManager.allColumns}
+        hiddenColumns={budgetColumnManager.hiddenColumns}
+        customColumns={budgetColumnManager.customColumns}
+        onToggleColumn={budgetColumnManager.toggleColumn}
+        onAddColumn={budgetColumnManager.addColumn}
+        onRemoveColumn={budgetColumnManager.removeColumn}
+        isVisible={budgetColumnManager.showColumnManager}
+        onClose={() => budgetColumnManager.setShowColumnManager(false)}
+      />
+      
+      <ColumnManager
+        columns={projectColumnManager.allColumns}
+        hiddenColumns={projectColumnManager.hiddenColumns}
+        customColumns={projectColumnManager.customColumns}
+        onToggleColumn={projectColumnManager.toggleColumn}
+        onAddColumn={projectColumnManager.addColumn}
+        onRemoveColumn={projectColumnManager.removeColumn}
+        isVisible={projectColumnManager.showColumnManager}
+        onClose={() => projectColumnManager.setShowColumnManager(false)}
+      />
     </div>
   );
 };
